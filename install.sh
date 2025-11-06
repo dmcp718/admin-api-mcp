@@ -164,9 +164,23 @@ print_success "Dependencies will be installed automatically on first run"
 echo ""
 echo "7️⃣  Authentication Setup"
 echo "   ========================"
+echo ""
 
-# Check if token already exists in keychain
+# Check if token already exists in keychain (new format)
 EXISTING_TOKEN=$(security find-generic-password -a "bearer_token" -s "lucidlink-mcp" -w 2>/dev/null)
+
+# Check for old format token and migrate it
+if [ -z "$EXISTING_TOKEN" ]; then
+    OLD_TOKEN=$(security find-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w 2>/dev/null)
+    if [ -n "$OLD_TOKEN" ]; then
+        echo "   Migrating bearer token to new format..."
+        security delete-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" 2>/dev/null
+        security add-generic-password -a "bearer_token" -s "lucidlink-mcp" -w "$OLD_TOKEN" 2>/dev/null
+        EXISTING_TOKEN="$OLD_TOKEN"
+        print_success "Bearer token migrated to new format"
+        echo ""
+    fi
+fi
 
 if [ -n "$EXISTING_TOKEN" ]; then
     print_success "Bearer token already configured in macOS Keychain"
