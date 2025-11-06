@@ -166,7 +166,7 @@ echo "7️⃣  Authentication Setup"
 echo "   ========================"
 
 # Check if token already exists in keychain
-EXISTING_TOKEN=$(security find-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w 2>/dev/null)
+EXISTING_TOKEN=$(security find-generic-password -a "bearer_token" -s "lucidlink-mcp" -w 2>/dev/null)
 
 if [ -n "$EXISTING_TOKEN" ]; then
     print_success "Bearer token already configured in macOS Keychain"
@@ -181,8 +181,8 @@ if [ -n "$EXISTING_TOKEN" ]; then
         echo ""
 
         if [ -n "$BEARER_TOKEN" ]; then
-            security delete-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" 2>/dev/null
-            security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN"
+            security delete-generic-password -a "bearer_token" -s "lucidlink-mcp" 2>/dev/null
+            security add-generic-password -a "bearer_token" -s "lucidlink-mcp" -w "$BEARER_TOKEN"
             print_success "Bearer token updated in macOS Keychain"
         else
             print_warning "No token entered. Keeping existing token."
@@ -203,7 +203,7 @@ else
     echo ""
 
     if [ -n "$BEARER_TOKEN" ]; then
-        security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN" 2>/dev/null
+        security add-generic-password -a "bearer_token" -s "lucidlink-mcp" -w "$BEARER_TOKEN" 2>/dev/null
         print_success "Bearer token stored securely in macOS Keychain"
     else
         print_warning "Bearer token not provided. You'll need to set it later."
@@ -318,7 +318,7 @@ echo ""
 echo "🔐 Security Note:"
 echo "   Your bearer token is stored securely in macOS Keychain."
 echo "   To update it later, run:"
-echo "   security add-generic-password -a 'lucidlink-mcp' -s 'lucidlink-mcp' -w 'YOUR_NEW_TOKEN' -U"
+echo "   security add-generic-password -a 'bearer_token' -s 'lucidlink-mcp' -w 'YOUR_NEW_TOKEN' -U"
 echo ""
 echo "📚 For help, check the documentation or run 'View help' in Claude Desktop"
 echo ""

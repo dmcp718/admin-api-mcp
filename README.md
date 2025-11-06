@@ -90,7 +90,7 @@ cp pyproject.toml ~/lucidlink-mcp/
 # Note: Dependencies are automatically installed when you first run the server with 'uv run'
 
 # Store bearer token securely (optional but recommended)
-security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "YOUR_BEARER_TOKEN"
+security add-generic-password -a "bearer_token" -s "lucidlink-mcp" -w "YOUR_BEARER_TOKEN"
 ```
 
 ### Step 4: Configure Claude Desktop
@@ -226,7 +226,7 @@ The MCP server interacts with these LucidLink API endpoints:
 
 **Option 1: macOS Keychain (Recommended)**
 ```bash
-security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "YOUR_TOKEN"
+security add-generic-password -a "bearer_token" -s "lucidlink-mcp" -w "YOUR_TOKEN"
 ```
 
 **Option 2: Environment Variable**
