@@ -197,20 +197,22 @@ The MCP server understands various ways to express the same action:
 
 The MCP server interacts with these LucidLink API endpoints:
 
-| Operation | Method | Endpoint |
-|-----------|--------|----------|
-| Create Filespace | POST | `/api/v1/filespaces` |
-| List Filespaces | GET | `/api/v1/filespaces` |
-| Get Filespace | GET | `/api/v1/filespaces/{id}` |
-| Delete Filespace | DELETE | `/api/v1/filespaces/{id}` |
-| Add Member | POST | `/api/v1/members` |
-| List Members | GET | `/api/v1/members` |
-| Remove Member | DELETE | `/api/v1/members/{id}` |
-| Create Group | POST | `/api/v1/groups` |
-| List Groups | GET | `/api/v1/groups` |
-| Add to Group | PUT | `/api/v1/groups/members` |
-| Grant Permission | POST | `/api/v1/filespaces/{id}/permissions` |
-| List Permissions | GET | `/api/v1/filespaces/{id}/permissions` |
+| Operation        | Method | Endpoint                                     |
+|------------------|--------|----------------------------------------------|
+| Create Filespace | POST   | `/api/v1/filespaces`                         |
+| List Filespaces  | GET    | `/api/v1/filespaces`                         |
+| Get Filespace    | GET    | `/api/v1/filespaces/{id}`                    |
+| Delete Filespace | DELETE | `/api/v1/filespaces/{id}`                    |
+| Add Member       | POST   | `/api/v1/members`                            |
+| List Members     | GET    | `/api/v1/members`                            |
+| Remove Member    | DELETE | `/api/v1/members/{id}`                       |
+| Create Group     | POST   | `/api/v1/groups`                             |
+| List Groups      | GET    | `/api/v1/groups`                             |
+| Add to Group     | PUT    | `/api/v1/groups/members`                     |
+| Grant Permission | POST   | `/api/v1/filespaces/{id}/permissions`        |
+| List Permissions | GET    | `/api/v1/filespaces/{id}/permissions`        |
+| List Providers   | GET    | `/api/v1/providers`                          |
+| Check API Health | GET    | `/api/v1/health`                             |
 
 ## Configuration
 
@@ -323,7 +325,9 @@ def add_members_bulk(self, emails: List[str]) -> List[ApiResponse]:
 
 ### Webhook Integration
 
-Add webhook support for real-time notifications:
+Webhooks allow you to send real-time notifications to external services when API operations occur. This is useful for logging, triggering Slack notifications, or integrating with automation tools like Zapier.
+
+Add this method to send webhook notifications:
 
 ```python
 def notify_webhook(self, event: str, data: Dict):
@@ -336,24 +340,23 @@ def notify_webhook(self, event: str, data: Dict):
         })
 ```
 
+Then call it from operations you want to monitor:
+
+```python
+def create_filespace(self, name: str, ...):
+    response = self._make_request("POST", "/api/v1/filespaces", ...)
+    self.notify_webhook("filespace_created", {"name": name, "id": response.data.get("id")})
+    return response
+```
+
 ## Support
 
-- **LucidLink Support**: [support.lucidlink.com](https://support.lucidlink.com)
 - **API Documentation**: See the API Key Functionalities guide
 - **Docker Help**: [docs.docker.com](https://docs.docker.com)
 
 ## License
 
 This MCP server is provided as-is for LucidLink customers to interact with their Admin API.
-
-## Contributing
-
-To contribute improvements:
-
-1. Test thoroughly with your LucidLink environment
-2. Follow Python PEP 8 style guidelines
-3. Add error handling for edge cases
-4. Update documentation for new features
 
 ## Version History
 
@@ -362,7 +365,3 @@ To contribute improvements:
 - Docker automation
 - Natural language processing
 - Secure token management
-
----
-
-**Built for LucidLink Business and Enterprise customers** | **Powered by Claude MCP**
