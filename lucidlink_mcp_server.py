@@ -438,7 +438,7 @@ class LucidLinkAPIClient:
         return self._make_request("GET", "/health")
 
     def list_providers(self) -> ApiResponse:
-        """List available storage providers"""
+        """List all available storage providers"""
         return self._make_request("GET", "/providers")
 
 class InputValidator:
@@ -555,6 +555,14 @@ async def list_tools():
         Tool(
             name="start_api_container",
             description="Start the LucidLink API container",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            }
+        ),
+        Tool(
+            name="stop_api_container",
+            description="Stop the LucidLink API container",
             inputSchema={
                 "type": "object",
                 "properties": {},
@@ -929,7 +937,26 @@ async def call_tool(name: str, arguments: dict):
                         error or "Failed to start container. Check Docker Desktop."
                     )
                 )]
-        
+
+        elif name == "stop_api_container":
+            success = docker_mgr.stop_container()
+            if success:
+                return [TextContent(
+                    type="text",
+                    text=format_success_message(
+                        "API Container Stopped",
+                        {"status": "Container stopped successfully"}
+                    )
+                )]
+            else:
+                return [TextContent(
+                    type="text",
+                    text=format_error_message(
+                        "Stop API Container",
+                        "Failed to stop container. It may not be running or Docker Desktop may not be running."
+                    )
+                )]
+
         elif name == "view_container_logs":
             lines = arguments.get("lines", 50)
             logs = docker_mgr.get_container_logs(lines)
@@ -1415,7 +1442,7 @@ async def call_tool(name: str, arguments: dict):
         # Service Management Tools
         elif name == "check_api_health":
             response = api_client.get_service_health()
-            
+
             if response.success:
                 return [TextContent(
                     type="text",
@@ -1429,7 +1456,32 @@ async def call_tool(name: str, arguments: dict):
                     type="text",
                     text=format_error_message("API Health Check", response.error)
                 )]
-        
+
+        elif name == "list_providers":
+            response = api_client.list_providers()
+            if response.success:
+                data = response.data if response.data else {}
+                providers = data.get('data', []) if isinstance(data, dict) else []
+                if providers:
+                    provider_list = "\n".join([
+                        f"• {p.get('name', 'Unknown')} - {p.get('description', 'No description')}"
+                        for p in providers
+                    ])
+                    return [TextContent(
+                        type="text",
+                        text=f"☁️ Available Storage Providers:\n\n{provider_list}"
+                    )]
+                else:
+                    return [TextContent(
+                        type="text",
+                        text="☁️ No storage providers found."
+                    )]
+            else:
+                return [TextContent(
+                    type="text",
+                    text=format_error_message("List Providers", response.error)
+                )]
+
         else:
             return [TextContent(
                 type="text",
