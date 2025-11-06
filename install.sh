@@ -33,8 +33,24 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
+# Check Claude Desktop installation
+echo "1️⃣  Checking Claude Desktop..."
+if [ -d "/Applications/Claude.app" ]; then
+    print_success "Claude Desktop is installed"
+else
+    print_error "Claude Desktop is not installed"
+    echo ""
+    echo "   This MCP server requires Claude Desktop to be installed first."
+    echo "   Please download and install Claude Desktop from:"
+    echo "   https://claude.ai/download"
+    echo ""
+    echo "   After installing Claude Desktop, run this script again."
+    exit 1
+fi
+
 # Check uv installation
-echo "1️⃣  Checking uv installation..."
+echo ""
+echo "2️⃣  Checking uv installation..."
 if command -v uv &> /dev/null; then
     UV_VERSION=$(uv --version | cut -d' ' -f2)
     UV_PATH=$(which uv)
@@ -71,7 +87,7 @@ fi
 
 # Check Docker Desktop installation
 echo ""
-echo "2️⃣  Checking Docker Desktop..."
+echo "3️⃣  Checking Docker Desktop..."
 if [ -d "/Applications/Docker.app" ]; then
     print_success "Docker Desktop is installed"
     
@@ -114,7 +130,7 @@ fi
 
 # Create installation directory
 echo ""
-echo "3️⃣  Creating installation directory..."
+echo "4️⃣  Creating installation directory..."
 INSTALL_DIR="$HOME/lucidlink-mcp"
 if [ -d "$INSTALL_DIR" ]; then
     print_warning "Installation directory already exists: $INSTALL_DIR"
@@ -132,7 +148,7 @@ print_success "Created directory: $INSTALL_DIR"
 
 # Copy server files
 echo ""
-echo "4️⃣  Installing MCP server..."
+echo "5️⃣  Installing MCP server..."
 cp lucidlink_mcp_server.py "$INSTALL_DIR/"
 cp pyproject.toml "$INSTALL_DIR/"
 print_success "Copied server files"
@@ -141,12 +157,12 @@ print_success "Copied server files"
 # uv run will automatically create a virtual environment and install dependencies
 # when the script is first executed by Claude Desktop
 echo ""
-echo "5️⃣  Dependencies configured..."
+echo "6️⃣  Dependencies configured..."
 print_success "Dependencies will be installed automatically on first run"
 
 # Get LucidLink Bearer Token
 echo ""
-echo "6️⃣  Authentication Setup"
+echo "7️⃣  Authentication Setup"
 echo "   ========================"
 echo "   You need a LucidLink Service Account bearer token."
 echo "   This is available for Business and Enterprise customers."
@@ -162,18 +178,22 @@ read -s BEARER_TOKEN
 echo ""
 
 if [ -n "$BEARER_TOKEN" ]; then
-    # Store in keychain
-    security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN" 2>/dev/null || \
-    security delete-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" 2>/dev/null && \
-    security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN"
-    print_success "Bearer token stored securely in macOS Keychain"
+    # Store in keychain (update if exists, add if new)
+    if security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN" 2>/dev/null; then
+        print_success "Bearer token stored securely in macOS Keychain"
+    else
+        # Item exists, update it
+        security delete-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" 2>/dev/null
+        security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN"
+        print_success "Bearer token updated in macOS Keychain"
+    fi
 else
     print_warning "Bearer token not provided. You'll need to set it later."
 fi
 
 # Configure Claude Desktop
 echo ""
-echo "7️⃣  Configuring Claude Desktop..."
+echo "8️⃣  Configuring Claude Desktop..."
 CLAUDE_CONFIG_DIR="$HOME/Library/Application Support/Claude"
 CLAUDE_CONFIG_FILE="$CLAUDE_CONFIG_DIR/claude_desktop_config.json"
 
@@ -237,7 +257,7 @@ fi
 
 # Note about container image
 echo ""
-echo "8️⃣  Container Image Setup"
+echo "9️⃣  Container Image Setup"
 echo "   ========================"
 echo "   The LucidLink API container image (lucidlink/lucidlink-api) will be"
 echo "   automatically pulled from Docker Hub when you first start the container."
@@ -247,7 +267,7 @@ echo ""
 
 # Test the installation
 echo ""
-echo "9️⃣  Testing installation..."
+echo "🔟 Testing installation..."
 cd "$INSTALL_DIR"
 echo "   Installing and verifying dependencies (this may take a moment on first run)..."
 uv run --quiet python -c "import mcp, docker, requests, keyring; print('✅ All dependencies verified')" || {
