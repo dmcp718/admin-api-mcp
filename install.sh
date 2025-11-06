@@ -164,31 +164,50 @@ print_success "Dependencies will be installed automatically on first run"
 echo ""
 echo "7️⃣  Authentication Setup"
 echo "   ========================"
-echo "   You need a LucidLink Service Account bearer token."
-echo "   This is available for Business and Enterprise customers."
-echo ""
-echo "   To get your token:"
-echo "   1. Log into LucidLink Admin Portal"
-echo "   2. Navigate to Service Accounts"
-echo "   3. Create or select a Service Account"
-echo "   4. Generate a secret key (bearer token)"
-echo ""
-echo "   Enter your bearer token (or press Enter to skip and set later):"
-read -s BEARER_TOKEN
-echo ""
 
-if [ -n "$BEARER_TOKEN" ]; then
-    # Store in keychain (update if exists, add if new)
-    if security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN" 2>/dev/null; then
-        print_success "Bearer token stored securely in macOS Keychain"
+# Check if token already exists in keychain
+EXISTING_TOKEN=$(security find-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w 2>/dev/null)
+
+if [ -n "$EXISTING_TOKEN" ]; then
+    print_success "Bearer token already configured in macOS Keychain"
+    echo "   Would you like to update it? (y/n)"
+    read -r response
+    if [[ "$response" != "y" ]]; then
+        echo "   Keeping existing token."
     else
-        # Item exists, update it
-        security delete-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" 2>/dev/null
-        security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN"
-        print_success "Bearer token updated in macOS Keychain"
+        echo ""
+        echo "   Enter your new bearer token:"
+        read -s BEARER_TOKEN
+        echo ""
+
+        if [ -n "$BEARER_TOKEN" ]; then
+            security delete-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" 2>/dev/null
+            security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN"
+            print_success "Bearer token updated in macOS Keychain"
+        else
+            print_warning "No token entered. Keeping existing token."
+        fi
     fi
 else
-    print_warning "Bearer token not provided. You'll need to set it later."
+    echo "   You need a LucidLink Service Account bearer token."
+    echo "   This is available for Business and Enterprise customers."
+    echo ""
+    echo "   To get your token:"
+    echo "   1. Log into LucidLink Admin Portal"
+    echo "   2. Navigate to Service Accounts"
+    echo "   3. Create or select a Service Account"
+    echo "   4. Generate a secret key (bearer token)"
+    echo ""
+    echo "   Enter your bearer token (or press Enter to skip and set later):"
+    read -s BEARER_TOKEN
+    echo ""
+
+    if [ -n "$BEARER_TOKEN" ]; then
+        security add-generic-password -a "lucidlink-mcp" -s "lucidlink-mcp" -w "$BEARER_TOKEN" 2>/dev/null
+        print_success "Bearer token stored securely in macOS Keychain"
+    else
+        print_warning "Bearer token not provided. You'll need to set it later."
+    fi
 fi
 
 # Configure Claude Desktop
