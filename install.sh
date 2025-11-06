@@ -43,18 +43,30 @@ else
     print_warning "uv not found. Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-    # Source the shell config to get uv in PATH
-    if [ -f "$HOME/.cargo/env" ]; then
-        source "$HOME/.cargo/env"
-    fi
+    # Add uv to PATH for this session
+    export PATH="$HOME/.local/bin:$PATH"
 
+    # Check if uv is now available (either in PATH or at default location)
     if command -v uv &> /dev/null; then
         UV_PATH=$(which uv)
-        print_success "uv installed successfully at $UV_PATH"
+        UV_VERSION=$(uv --version | cut -d' ' -f2)
+        print_success "uv $UV_VERSION installed successfully at $UV_PATH"
+    elif [ -f "$HOME/.local/bin/uv" ]; then
+        UV_PATH="$HOME/.local/bin/uv"
+        UV_VERSION=$($UV_PATH --version | cut -d' ' -f2)
+        print_success "uv $UV_VERSION installed successfully at $UV_PATH"
     else
         print_error "Failed to install uv. Please install manually from https://docs.astral.sh/uv/"
         exit 1
     fi
+
+    # Provide instructions to add to PATH permanently
+    echo ""
+    print_warning "To use uv in future terminal sessions, add it to your PATH:"
+    echo "   For bash/zsh: echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
+    echo "   For fish: echo 'set -gx PATH \$HOME/.local/bin \$PATH' >> ~/.config/fish/config.fish"
+    echo "   Then restart your terminal or run: source ~/.zshrc"
+    echo ""
 fi
 
 # Check Docker Desktop installation
