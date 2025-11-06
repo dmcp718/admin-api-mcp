@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "lucidlink-admin-api": {
+      "command": "/Users/{YOUR_USERNAME}/.local/bin/uv",
+      "args": [
+        "--directory",
+        "/Users/{YOUR_USERNAME}/lucidlink-mcp",
+        "run",
+        "python",
+        "lucidlink_mcp_server.py"
+      ],
+      "env": {
+        "LUCIDLINK_BEARER_TOKEN": "{YOUR_SERVICE_ACCOUNT_TOKEN}",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}
