@@ -1615,6 +1615,17 @@ async def call_tool(name: str, arguments: dict):
                     "Initialize API", f"Failed to connect: {health.error}"
                 ))]
 
+        # Tools that need no API token — return immediately
+        if name == "get_connect_workflow_guide":
+            return [TextContent(type="text", text=CONNECT_WORKFLOW_GUIDE)]
+
+        if name == "generate_connect_ui":
+            filespace_id = arguments.get("filespace_id", "")
+            data_store_id = arguments.get("data_store_id", "")
+            html = CONNECT_UI_TEMPLATE.replace("{FILESPACE_ID}", filespace_id).replace("{DATA_STORE_ID}", data_store_id)
+            script = CONNECT_SERVER_TEMPLATE.replace("{HTML_CONTENT}", html)
+            return [TextContent(type="text", text=script)]
+
         # Ensure API client is initialized for remaining tools
         if not api_client:
             token = get_bearer_token()
