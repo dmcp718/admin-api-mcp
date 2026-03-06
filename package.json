@@ -1,0 +1,21 @@
+{
+  "name": "lucidlink-mcp",
+  "version": "2.0.0",
+  "description": "LucidLink Admin & Connect MCP servers for Claude Desktop",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "admin": "node dist/admin-server.js",
+    "connect": "node dist/connect-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
