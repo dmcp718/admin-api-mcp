@@ -1480,7 +1480,7 @@ async def list_tools():
         ),
         Tool(
             name="generate_connect_ui",
-            description="Generate a Python server script for browser-based S3 imports. Run with python3, auto-opens browser.",
+            description="Generate a Python server script for browser-based S3 imports. No API token needed — the UI handles its own authentication. Run with python3, auto-opens browser.",
             inputSchema={
                 "type": "object",
                 "properties": {
