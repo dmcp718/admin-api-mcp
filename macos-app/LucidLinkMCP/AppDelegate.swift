@@ -50,8 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "circle", accessibilityDescription: "LucidLink MCP")
-            button.image?.isTemplate = true
+            button.image = makeStatusIcon(filled: false)
         }
 
         let menu = NSMenu()
@@ -259,9 +258,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateStatusIcon(healthy: Bool) {
-        let name = healthy ? "circle.fill" : "circle"
-        statusItem.button?.image = NSImage(systemSymbolName: name, accessibilityDescription: "LucidLink MCP")
-        statusItem.button?.image?.isTemplate = true
+        statusItem.button?.image = makeStatusIcon(filled: healthy)
+    }
+
+    private func makeStatusIcon(filled: Bool) -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let img = NSImage(size: size, flipped: false) { rect in
+            let dotSize: CGFloat = 10
+            let dotRect = NSRect(
+                x: (rect.width - dotSize) / 2,
+                y: (rect.height - dotSize) / 2,
+                width: dotSize,
+                height: dotSize
+            )
+            let path = NSBezierPath(ovalIn: dotRect)
+            // Dark warm purple
+            let purple = NSColor(red: 0.38, green: 0.08, blue: 0.60, alpha: 1.0) // #61149A
+            if filled {
+                purple.setFill()
+                path.fill()
+            } else {
+                purple.setStroke()
+                path.lineWidth = 1.5
+                path.stroke()
+            }
+            return true
+        }
+        img.isTemplate = false
+        return img
     }
 
     // MARK: - About
