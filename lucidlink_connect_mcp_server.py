@@ -207,15 +207,10 @@ tr:last-child td { border-bottom: none; }
       <div class="step-tag" id="t1">Connected</div>
     </div>
     <div class="step-body">
-      <div class="g2">
-        <div class="field">
-          <label>API Base URL</label>
-          <input type="text" id="baseUrl" value="http://localhost:3003">
-        </div>
-        <div class="field">
-          <label>Bearer Token</label>
-          <input type="password" id="token" placeholder="Your bearer token">
-        </div>
+      <input type="hidden" id="baseUrl" value="http://localhost:8080">
+      <div class="field">
+        <label>Bearer Token</label>
+        <input type="password" id="token" placeholder="Your bearer token">
       </div>
       <button class="btn btn-p" id="connectBtn" onclick="doConnect()">Connect</button>
       <div id="s1msg"></div>
@@ -561,11 +556,87 @@ async function doImport() {
 window.addEventListener('DOMContentLoaded', function() {
   const p = new URLSearchParams(location.search);
   if (p.get('token')) document.getElementById('token').value = p.get('token');
-  if (p.get('url')) document.getElementById('baseUrl').value = p.get('url');
 });
+
 </script>
 </body>
 </html>"""
+
+CONNECT_SERVER_TEMPLATE = '''#!/usr/bin/env python3
+# LucidLink Connect UI — local server with API proxy
+# Run:  python3 lucidlink_connect_ui.py
+# Then: browser opens automatically at http://localhost:8080
+
+import http.server, urllib.request, urllib.error, json, threading, webbrowser
+
+PORT = 8080
+API  = "http://localhost:3003"
+
+HTML = """{HTML_CONTENT}"""
+
+class _H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+
+    def do_OPTIONS(self):
+        self.send_response(200); self._cors(); self.end_headers()
+
+    def do_GET(self):
+        if self.path in ("/", "/index.html"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self._cors(); self.end_headers()
+            self.wfile.write(HTML.encode())
+        elif self.path.startswith("/api/"):
+            self._proxy("GET")
+        else:
+            self.send_response(404); self.end_headers()
+
+    def do_POST(self):   self._proxy("POST")
+    def do_PATCH(self):  self._proxy("PATCH")
+    def do_DELETE(self): self._proxy("DELETE")
+
+    def _cors(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+
+    def _proxy(self, method):
+        url  = API + self.path
+        auth = self.headers.get("Authorization", "")
+        n    = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(n) if n else None
+        req  = urllib.request.Request(url, data=body, method=method)
+        if auth: req.add_header("Authorization", auth)
+        if body: req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = r.read()
+                self.send_response(r.status)
+                self.send_header("Content-Type", r.headers.get("Content-Type", "application/json"))
+                self._cors(); self.end_headers(); self.wfile.write(data)
+        except urllib.error.HTTPError as e:
+            data = e.read()
+            self.send_response(e.code)
+            self.send_header("Content-Type", "application/json")
+            self._cors(); self.end_headers(); self.wfile.write(data)
+        except Exception as ex:
+            self.send_response(502)
+            self.send_header("Content-Type", "application/json")
+            self._cors(); self.end_headers()
+            self.wfile.write(json.dumps({"error": str(ex)}).encode())
+
+if __name__ == "__main__":
+    srv = http.server.HTTPServer(("127.0.0.1", PORT), _H)
+    url = f"http://localhost:{PORT}"
+    print(f"LucidLink Connect UI  →  {url}")
+    print(f"Proxying API calls   →  {API}")
+    print("Ctrl+C to stop")
+    threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print("Stopped.")
+'''
 
 
 @dataclass
@@ -1409,7 +1480,7 @@ async def list_tools():
         ),
         Tool(
             name="generate_connect_ui",
-            description="Generate a standalone HTML/JS app for S3 to LucidLink Connect imports.",
+            description="Generate a Python server script for browser-based S3 imports. Run with python3, auto-opens browser.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1811,7 +1882,8 @@ async def call_tool(name: str, arguments: dict):
             filespace_id = arguments.get("filespace_id", "")
             data_store_id = arguments.get("data_store_id", "")
             html = CONNECT_UI_TEMPLATE.replace("{FILESPACE_ID}", filespace_id).replace("{DATA_STORE_ID}", data_store_id)
-            return [TextContent(type="text", text=html)]
+            script = CONNECT_SERVER_TEMPLATE.replace("{HTML_CONTENT}", html)
+            return [TextContent(type="text", text=script)]
 
         else:
             return [TextContent(type="text", text=f"❌ Unknown tool: {name}")]
