@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc",
     "admin": "node dist/admin-server.js",
-    "connect": "node dist/connect-server.js"
+    "connect": "node dist/connect-server.js",
+    "browser": "node dist/browser-server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"
