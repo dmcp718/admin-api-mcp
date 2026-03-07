@@ -15,6 +15,7 @@ import { z } from "zod";
 import { registerBrandResource } from "./shared/brand-resource.js";
 import { registerCapabilitiesResource } from "./shared/capabilities-resource.js";
 import { ok, err } from "./shared/formatters.js";
+import { generateSearchUI, GeneratedProject } from "./connect/search-template.js";
 
 import { existsSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
@@ -292,10 +293,10 @@ const server = new McpServer(
   { name: "lucidlink-filespace-search", version: "1.0.0" },
   { instructions: `Filespace search and browsing server backed by fs-index-server (Go binary on localhost:3201).
 Call start_filespace_indexer first, then search_filespace or browse_filespace.
-When asked to BUILD a search web app or UI, read the lucidlink://search/api-reference resource
-for the full HTTP API spec with endpoints, response shapes, and frontend integration guide.
-NEVER rewrite the Go backend. NEVER build a search backend in another language.
-Use Inter font, dark theme (#151519), neon accent (#B0FB15). Read lucidlink://brand/design-tokens for brand rules.` },
+When asked to BUILD a search web app or UI, use the create_search_ui tool — it generates and starts
+a complete Node.js + Express app with dark-themed UI, FTS5 search, filespace filtering, and browse mode.
+Do NOT build search UIs manually — always use create_search_ui.
+NEVER rewrite the Go backend. NEVER build a search backend in another language.` },
 );
 
 registerBrandResource(server);
@@ -640,6 +641,75 @@ server.tool(
         `Error: ${e instanceof Error ? e.message : String(e)}`
       );
     }
+  },
+);
+
+// ---------- Tool: create_search_ui ----------
+
+server.tool(
+  "create_search_ui",
+  "Generate a complete search web app for browsing and searching LucidLink filespace contents. Produces a Node.js + Express project (5 files) with dark-themed UI, full-text search via fs-index-server, filespace filtering, directory browsing, and live crawl progress. Writes files to disk, runs npm install, starts the server, and opens the browser. Do NOT build search UIs manually — always use this tool.",
+  {
+    output_dir: z.string().describe("Directory to write the generated project files to"),
+    port: z.number().optional().describe("Port for the web app (default: 3099)"),
+    indexer_port: z.number().optional().describe("Port where fs-index-server runs (default: 3201)"),
+  },
+  async ({ output_dir, port, indexer_port }) => {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    const { join: joinPath } = await import("node:path");
+    const { spawn } = await import("node:child_process");
+
+    const project = generateSearchUI(port ?? 3099, indexer_port ?? 3201);
+
+    // Write project files
+    try {
+      for (const [relPath, content] of Object.entries(project.files)) {
+        const fullPath = joinPath(output_dir, relPath);
+        const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(fullPath, content, "utf-8");
+      }
+    } catch (e) {
+      return err(`Failed to write project files: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // npm install
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn("npm", ["install"], { cwd: output_dir, stdio: "pipe" });
+        let stderr = "";
+        proc.stderr?.on("data", (d: Buffer) => { stderr += d.toString(); });
+        proc.on("close", (code) => code === 0 ? resolve() : reject(new Error(`npm install failed (exit ${code}): ${stderr}`)));
+        proc.on("error", reject);
+      });
+    } catch (e) {
+      return err(`Project files written but npm install failed:\n${e instanceof Error ? e.message : String(e)}\n\nYou can run manually:\n  cd ${output_dir} && npm install && node server.js`);
+    }
+
+    // Start the server
+    const actualPort = port ?? 3099;
+    try {
+      const child = spawn("node", ["server.js"], {
+        cwd: output_dir,
+        detached: true,
+        stdio: "ignore",
+      });
+      child.unref();
+
+      // Wait for server to start
+      await new Promise(r => setTimeout(r, 1500));
+    } catch {
+      // Server may still start — continue
+    }
+
+    return ok(
+      `Search UI generated and started.\n\n` +
+      `Location: ${output_dir}\n` +
+      `URL: http://localhost:${actualPort}\n\n` +
+      `Files created:\n` +
+      Object.keys(project.files).map(f => `  ${f}`).join("\n") +
+      `\n\n${project.instructions}`
+    );
   },
 );
 

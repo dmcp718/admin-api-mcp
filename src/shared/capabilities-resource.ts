@@ -16,7 +16,7 @@ ARCHITECTURE
 ============
                                     ┌─ lucidlink-api (28 tools)
   Claude Desktop ──► MCP servers ───┼─ lucidlink-connect-api (18 tools)
-                                    ├─ lucidlink-filespace-search (4 tools)
+                                    ├─ lucidlink-filespace-search (5 tools)
                                     └─ lucidlink-filespace-browser (1 tool)
                                           │
                           LucidLink API ◄──┘  (localhost:3003, Node.js process)
@@ -138,6 +138,10 @@ Tools:
                               Returns file names and paths, supports filespace filtering.
   browse_filespace          — list directory contents (like ls)
   indexer_status            — check mount points, crawl progress, file counts
+  create_search_ui          — generates a complete search web app (Node.js + Express)
+                              with dark theme, FTS5 search, filespace filtering,
+                              directory browsing, and live crawl progress.
+                              Do NOT build search UIs manually — always use this tool.
 
 Resource:
   lucidlink://search/api-reference — Complete REST API reference for fs-index-server.
@@ -151,9 +155,7 @@ Example workflow — search files:
 
 Example workflow — build a search web app:
   1. start_filespace_indexer
-  2. Read lucidlink://search/api-reference for the HTTP API spec
-  3. Read lucidlink://brand/design-tokens for brand guidelines
-  4. Build frontend that calls fs-index-server JSON endpoints directly
+  2. create_search_ui (output_dir, port) — generates and starts the app
 
 The indexer runs continuously in the background. Once started, search and browse
 work immediately (results improve as crawling progresses).
@@ -173,6 +175,7 @@ WHEN TO USE WHICH SERVER
 "List my filespaces"              → lucidlink-api: list_filespaces
 "Add a user to the marketing fs"  → lucidlink-api: add_member
 "Search for quarterly reports"    → lucidlink-filespace-search: start_filespace_indexer + search_filespace
+"Build me a search app"           → lucidlink-filespace-search: start_filespace_indexer + create_search_ui
 "Browse the videos folder"        → lucidlink-filespace-search: browse_filespace
 "Show me a file browser"          → lucidlink-filespace-browser: create_filespace_browser
 "Link S3 objects into a filespace"→ lucidlink-connect-api: get_connect_workflow_guide, then follow steps
