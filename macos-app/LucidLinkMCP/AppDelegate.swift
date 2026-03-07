@@ -155,6 +155,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let healthy = (response as? HTTPURLResponse)?.statusCode == 200
             DispatchQueue.main.async {
                 self?.updateStatusIcon(healthy: healthy)
+                self?.updateMenuItems(running: healthy)
             }
         }
         task.resume()
