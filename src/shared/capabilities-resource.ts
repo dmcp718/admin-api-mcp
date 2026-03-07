@@ -139,13 +139,25 @@ Tools:
   browse_filespace          — list directory contents (like ls)
   indexer_status            — check mount points, crawl progress, file counts
 
+Resource:
+  lucidlink://search/api-reference — Complete REST API reference for fs-index-server.
+      READ THIS before building any search web app or UI. Contains all HTTP endpoints,
+      response JSON shapes, and a frontend integration guide.
+
 Example workflow — search files:
   1. start_filespace_indexer (no args needed — auto-discovers mounts)
   2. search_filespace (query: "quarterly report")
   3. browse_filespace (path: "/Volumes/myfs/documents")
 
+Example workflow — build a search web app:
+  1. start_filespace_indexer
+  2. Read lucidlink://search/api-reference for the HTTP API spec
+  3. Read lucidlink://brand/design-tokens for brand guidelines
+  4. Build frontend that calls fs-index-server JSON endpoints directly
+
 The indexer runs continuously in the background. Once started, search and browse
 work immediately (results improve as crawling progresses).
+NEVER rewrite the Go binary. NEVER build a search backend in another language.
 
 SERVER 4: lucidlink-filespace-browser (visual file browser)
 ============================================================

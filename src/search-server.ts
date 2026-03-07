@@ -42,15 +42,140 @@ function findBinary(): { binaryPath: string; binaryDir: string } | null {
   return null;
 }
 
+// ── fs-index-server API reference (exposed as MCP resource) ──
+
+const FS_INDEX_API_REFERENCE = `fs-index-server REST API Reference
+=====================================
+Base URL: http://localhost:3201  (port configurable via start_filespace_indexer)
+All responses are JSON unless noted. CORS is enabled (Access-Control-Allow-Origin: *).
+
+ENDPOINTS
+=========
+
+GET /api/health
+  Response: { "status": "ok" }
+
+GET /api/filespaces
+  Lists discovered filespace names.
+  Response: ["filespace-a", "filespace-b"]
+
+GET /api/mounts
+  Lists discovered mounts with instance details.
+  Response: [{ "Name": "myfs", "MountPoint": "/Volumes/myfs", "InstanceID": "2001" }]
+
+GET /api/files?path=<dir>
+  Lists directory contents. Defaults to mount prefix root.
+  Response: {
+    "path": "/Volumes/myfs/documents",
+    "entries": [{
+      "id": 42,
+      "path": "/Volumes/myfs/documents/report.pdf",
+      "name": "report.pdf",
+      "parent_path": "/Volumes/myfs/documents",
+      "is_directory": false,
+      "size": 1048576,
+      "modified_at": "2026-03-01T12:00:00Z",
+      "created_at": "2026-02-15T09:30:00Z"
+    }]
+  }
+
+GET /api/stats
+  Index statistics.
+  Response: { "total_files": 12345, "total_dirs": 678, "indexed_date": "2026-03-07T..." }
+
+GET /api/crawl/stats
+  Crawl progress and throughput.
+  Response: {
+    "crawl": { "pending": 5, "crawling": 2, "completed": 100, "failed": 0, "total": 107 },
+    "indexed_files": 12345,
+    "throughput": { "dirs_per_sec": 15.2, "files_per_sec": 342.1, "elapsed_sec": 36, "total_dirs": 547, "total_files": 12345 }
+  }
+
+GET /api/events?category=<cat>&filespace=<name>&level=<level>&limit=<n>&before_id=<id>
+  Event log (all params optional).
+  Response: [{ "id": 1, "timestamp": "2026-03-07T...", "category": "indexer", "level": "info", "filespace": "myfs", "message": "Crawl complete", "detail": null }]
+
+POST /api/discover
+  Re-discover filespace mounts.
+  Response: { "mounts": [...], "count": 2 }
+
+DELETE /api/filespaces/<name>/index
+  Clear index for one filespace (triggers re-crawl).
+  Response: { "filespace": "myfs", "deleted": 5000 }
+
+SSE ENDPOINTS (Server-Sent Events — for real-time UI)
+=====================================================
+These return SSE streams, NOT JSON. They use Datastar conventions
+(event types: datastar-patch-elements, datastar-patch-signals).
+For a custom frontend, use the JSON endpoints above instead.
+
+GET /sse/search?q=<query>&limit=<n>&fs=<filespace>
+  FTS5 full-text search. Returns HTML fragments + signal patches via SSE.
+
+GET /sse/search/live?q=<query>&timeout=<sec>&fs=<filespace>
+  Live filesystem search (uses find). Streams results as they're found.
+
+GET /sse/directory-view?path=<dir>
+  Real-time directory listing via SSE.
+
+GET /sse/events
+  Live event stream.
+
+BUILDING A SEARCH FRONTEND
+===========================
+Use the JSON endpoints, NOT the SSE endpoints. Example flow:
+
+1. Check health:        GET /api/health
+2. List filespaces:     GET /api/filespaces  →  populate filter dropdown
+3. Search:              GET /api/files?path=/Volumes  (browse) or build a search
+                        endpoint call from the query
+4. For full-text search, use the MCP tool search_filespace which returns parsed results.
+   Or call /sse/search and parse the SSE stream.
+
+For search via JSON (simplest approach for a custom frontend):
+  - The /api/files endpoint supports browsing directories
+  - For FTS5 search, use fetch() with /sse/search and parse the SSE events:
+      const response = await fetch(\`http://localhost:3201/sse/search?q=\${query}\`);
+      const text = await response.text();
+      // Parse data-path="..." attributes from the HTML fragments
+      const paths = [...text.matchAll(/data-path="([^"]+)"/g)].map(m => m[1]);
+
+IMPORTANT RULES
+===============
+- NEVER rewrite the Go binary — it is compiled, tested, and production-ready.
+- NEVER build a search backend in Python, FastAPI, or any other language.
+- The frontend should call these HTTP endpoints directly.
+- Use Inter font, dark theme (#151519 bg, #FFFFFF text, #B0FB15 accent).
+  Read lucidlink://brand/design-tokens for full brand guidelines.`;
+
 const server = new McpServer(
   { name: "lucidlink-filespace-search", version: "1.0.0" },
-  { instructions: `Filespace search and browsing server. Uses a compiled Go binary (fs-index-server) — never rewrite it.
-Call start_filespace_indexer first (auto-discovers LucidLink mounts), then search_filespace or browse_filespace.
-The indexer runs continuously in the background; results improve as crawling progresses.` },
+  { instructions: `Filespace search and browsing server backed by fs-index-server (Go binary on localhost:3201).
+Call start_filespace_indexer first, then search_filespace or browse_filespace.
+When asked to BUILD a search web app or UI, read the lucidlink://search/api-reference resource
+for the full HTTP API spec with endpoints, response shapes, and frontend integration guide.
+NEVER rewrite the Go backend. NEVER build a search backend in another language.
+Use Inter font, dark theme (#151519), neon accent (#B0FB15). Read lucidlink://brand/design-tokens for brand rules.` },
 );
 
 registerBrandResource(server);
 registerCapabilitiesResource(server);
+
+// Register the fs-index-server API reference as a resource
+server.resource(
+  "search-api-reference",
+  "lucidlink://search/api-reference",
+  {
+    description: "Complete REST API reference for fs-index-server — all endpoints, response shapes, and frontend integration guide. READ THIS before building any search UI.",
+    mimeType: "text/plain",
+  },
+  async () => ({
+    contents: [{
+      uri: "lucidlink://search/api-reference",
+      text: FS_INDEX_API_REFERENCE,
+    }],
+  }),
+);
 
 // ---------- Tool: start_filespace_indexer ----------
 
