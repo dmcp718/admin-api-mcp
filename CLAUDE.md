@@ -131,7 +131,7 @@ The MCP server is registered with Claude Desktop through this config file using 
 ```json
 {
   "mcpServers": {
-    "lucidlink-admin-api": {
+    "lucidlink-api": {
       "command": "/Users/YOUR_USERNAME/.local/bin/uv",
       "args": [
         "--directory",

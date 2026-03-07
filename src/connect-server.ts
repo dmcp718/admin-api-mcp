@@ -10,19 +10,17 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 import { ApiClient } from "./shared/api-client.js";
-import { getBearerToken, storeBearerToken } from "./shared/keychain.js";
-import {
-  ensureApiRunning,
-  isApiRunning,
-  getApiLogs,
-} from "./shared/process-manager.js";
-import { formatSuccess, formatError } from "./shared/formatters.js";
+import { getBearerToken } from "./shared/keychain.js";
+import { ensureApiRunning } from "./shared/process-manager.js";
+import { formatSuccess, formatError, ok, err } from "./shared/formatters.js";
 import {
   ensureFolderPath,
   importS3Object,
   bulkImportS3Objects,
 } from "./connect/workflow-tools.js";
 import { generateConnectUI, GeneratedProject } from "./connect/ui-template.js";
+import { registerBrandResource } from "./shared/brand-resource.js";
+import { registerCapabilitiesResource } from "./shared/capabilities-resource.js";
 
 // ── Workflow guide (no token needed) ──
 
@@ -99,64 +97,21 @@ async function ensureReady(): Promise<string | null> {
   return null;
 }
 
-function text(s: string) {
-  return { content: [{ type: "text" as const, text: s }] };
-}
-
 // ── Server ──
 
-const server = new McpServer({
-  name: "lucidlink-connect-api",
-  version: "2.0.0",
-});
+const server = new McpServer(
+  { name: "lucidlink-connect-api", version: "2.0.0" },
+  { instructions: `LucidLink Connect API server — links existing S3 objects into filespaces as read-only external entries.
+The API auto-starts on first tool call. Use get_connect_workflow_guide for a complete quickstart.
 
-// ── Process Management ──
+Typical workflow: create_data_store → ensure_folder_path → bulk_import_s3_objects
+For a web UI: use create_connect_ui (generates a complete app — never build manually).
 
-server.tool(
-  "check_api_status",
-  "Check if the LucidLink API process is running and healthy",
-  {},
-  async () => {
-    const running = await isApiRunning();
-    if (running) {
-      return text(formatSuccess("API Status", { status: "Running", endpoint: "http://localhost:3003/api/v1" }));
-    }
-    return text("API is not running. It will be started automatically when you make an API call.");
-  },
+Process management (check_api_status, view_api_logs) is on the lucidlink-api server, not here.` },
 );
 
-server.tool(
-  "view_api_logs",
-  "View recent logs from the LucidLink API process",
-  { lines: z.number().optional().describe("Number of log lines (default 50)") },
-  async ({ lines }) => {
-    const logs = getApiLogs(lines ?? 50);
-    return text(logs || "No logs available.");
-  },
-);
-
-// ── Auth ──
-
-server.tool(
-  "initialize_api",
-  "Initialize the API client with a bearer token (stores in macOS Keychain)",
-  { token: z.string().optional().describe("Bearer token (optional — uses stored token if not provided)") },
-  async ({ token }) => {
-    const t = token || getBearerToken();
-    if (!t) return text(formatError("Initialize API", "No bearer token provided or found in Keychain."));
-
-    if (token) storeBearerToken(token);
-    apiClient = new ApiClient(t);
-
-    const err = await ensureReady();
-    if (err) return text(formatError("Initialize API", err));
-
-    const health = await apiClient.getHealth();
-    return health.success
-      ? text(formatSuccess("API Initialized", { status: "Connected", endpoint: "http://localhost:3003/api/v1" }))
-      : text(formatError("Initialize API", health.error ?? "Failed to connect"));
-  },
-);
+registerBrandResource(server);
+registerCapabilitiesResource(server);
 
 // ── Tools that need NO token ──
 
@@ -164,7 +119,7 @@ server.tool(
   "get_connect_workflow_guide",
   "Return step-by-step guide for the LucidLink Connect import workflow (no token needed)",
   {},
-  async () => text(CONNECT_WORKFLOW_GUIDE),
+  async () => ok(CONNECT_WORKFLOW_GUIDE),
 );
 
 server.tool(
@@ -200,7 +155,7 @@ server.tool(
       execSync("npm install --production", { cwd: dir, stdio: "pipe", timeout: 60000 });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      return text(`Generated files in ${dir}/ but npm install failed:\n${msg}\n\nTry manually: cd ${dir} && npm install && node server.js`);
+      return err(`Generated files in ${dir}/ but npm install failed:\n${msg}\n\nTry manually: cd ${dir} && npm install && node server.js`);
     }
 
     // Launch server in background (detached so it survives MCP server restart)
@@ -214,7 +169,7 @@ server.tool(
     // Wait briefly for server to start
     await new Promise((r) => setTimeout(r, 1500));
 
-    return text(
+    return ok(
       `Connect UI is running at http://localhost:8080\n\n` +
       `Project files: ${dir}/\n` +
       Object.keys(project.files).map((f) => `  ${f}`).join("\n") +
@@ -234,13 +189,13 @@ server.tool(
     name: z.string().describe("New directory name"),
   },
   async ({ filespace_id, parent_id, name }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Create Entry", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Create Entry", startErr));
 
     const res = await getClient().createEntry(filespace_id, parent_id, name);
     return res.success
-      ? text(formatSuccess(`Created directory '${name}'`, res.data ?? {}))
-      : text(formatError("Create Entry", res.error ?? "Unknown error"));
+      ? ok(formatSuccess(`Created directory '${name}'`, res.data ?? {}))
+      : err(formatError("Create Entry", res.error ?? "Unknown error"));
   },
 );
 
@@ -252,13 +207,13 @@ server.tool(
     path: z.string().describe("Full filesystem path (e.g. /reports/q3/)"),
   },
   async ({ filespace_id, path }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Resolve Entry", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Resolve Entry", startErr));
 
     const res = await getClient().resolveEntry(filespace_id, path);
     return res.success
-      ? text(formatSuccess(`Resolved path '${path}'`, res.data ?? {}))
-      : text(formatError("Resolve Entry", res.error ?? "Unknown error"));
+      ? ok(formatSuccess(`Resolved path '${path}'`, res.data ?? {}))
+      : err(formatError("Resolve Entry", res.error ?? "Unknown error"));
   },
 );
 
@@ -270,13 +225,13 @@ server.tool(
     entry_id: z.string().describe("Filesystem entry ID"),
   },
   async ({ filespace_id, entry_id }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Get Entry", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Get Entry", startErr));
 
     const res = await getClient().getEntry(filespace_id, entry_id);
     return res.success
-      ? text(formatSuccess("Entry Details", res.data ?? {}))
-      : text(formatError("Get Entry", res.error ?? "Unknown error"));
+      ? ok(formatSuccess("Entry Details", res.data ?? {}))
+      : err(formatError("Get Entry", res.error ?? "Unknown error"));
   },
 );
 
@@ -289,15 +244,15 @@ server.tool(
     confirm: z.boolean().describe("Must be true to proceed"),
   },
   async ({ filespace_id, entry_id, confirm }) => {
-    if (!confirm) return text("Deletion not confirmed. Set confirm=true to proceed.");
+    if (!confirm) return err("Deletion not confirmed. Set confirm=true to proceed.");
 
-    const err = await ensureReady();
-    if (err) return text(formatError("Delete Entry", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Delete Entry", startErr));
 
     const res = await getClient().deleteEntry(filespace_id, entry_id);
     return res.success
-      ? text(formatSuccess("Deleted Entry", { entry_id }))
-      : text(formatError("Delete Entry", res.error ?? "Unknown error"));
+      ? ok(formatSuccess("Deleted Entry", { entry_id }))
+      : err(formatError("Delete Entry", res.error ?? "Unknown error"));
   },
 );
 
@@ -311,27 +266,27 @@ server.tool(
     next_cursor: z.string().optional().describe("Pagination cursor"),
   },
   async ({ filespace_id, entry_id, limit, next_cursor }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("List Entry Children", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("List Entry Children", startErr));
 
     const res = await getClient().listEntryChildren(filespace_id, entry_id, {
       limit,
       nextCursor: next_cursor,
     });
-    if (!res.success) return text(formatError("List Entry Children", res.error ?? "Unknown error"));
+    if (!res.success) return err(formatError("List Entry Children", res.error ?? "Unknown error"));
 
     const inner = (res.data as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
     const entries = (inner?.entries ?? []) as Record<string, unknown>[];
     const nextCur = inner?.nextCursor as string | undefined;
 
-    if (entries.length === 0) return text("Directory is empty.");
+    if (entries.length === 0) return ok("Directory is empty.");
 
     let list = entries.map((e) =>
       `- [${e.type ?? "?"}] ${e.name ?? "?"} (ID: ${e.id ?? "N/A"})`,
     ).join("\n");
     let msg = `${entries.length} item(s):\n\n${list}`;
     if (nextCur) msg += `\n\nMore results available. Use next_cursor='${nextCur}' to continue.`;
-    return text(msg);
+    return ok(msg);
   },
 );
 
@@ -352,8 +307,8 @@ server.tool(
     url_expiration_minutes: z.number().optional().describe("Pre-signed URL expiration in minutes"),
   },
   async ({ filespace_id, name, access_key, secret_key, bucket_name, use_virtual_addressing, region, endpoint, url_expiration_minutes }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Create Data Store", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Create Data Store", startErr));
 
     const s3Params: Record<string, unknown> = {
       accessKey: access_key,
@@ -371,8 +326,8 @@ server.tool(
       s3StorageParams: s3Params,
     });
     return res.success
-      ? text(formatSuccess(`Created data store '${name}'`, res.data ?? {}))
-      : text(formatError("Create Data Store", res.error ?? "Unknown error"));
+      ? ok(formatSuccess(`Created data store '${name}'`, res.data ?? {}))
+      : err(formatError("Create Data Store", res.error ?? "Unknown error"));
   },
 );
 
@@ -384,19 +339,19 @@ server.tool(
     name: z.string().optional().describe("Filter by data store name"),
   },
   async ({ filespace_id, name }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("List Data Stores", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("List Data Stores", startErr));
 
     const res = await getClient().listDataStores(filespace_id, name);
-    if (!res.success) return text(formatError("List Data Stores", res.error ?? "Unknown error"));
+    if (!res.success) return err(formatError("List Data Stores", res.error ?? "Unknown error"));
 
     const stores = (res.data as Record<string, unknown>)?.data as Record<string, unknown>[] ?? [];
-    if (stores.length === 0) return text("No data stores found for this filespace.");
+    if (stores.length === 0) return ok("No data stores found for this filespace.");
 
     const list = stores.map((s) =>
       `- ${s.name ?? "Unknown"} (ID: ${s.id ?? "N/A"}, kind: ${s.kind ?? "N/A"})`,
     ).join("\n");
-    return text(`${stores.length} data store(s):\n\n${list}`);
+    return ok(`${stores.length} data store(s):\n\n${list}`);
   },
 );
 
@@ -408,13 +363,13 @@ server.tool(
     data_store_id: z.string().describe("Data store ID"),
   },
   async ({ filespace_id, data_store_id }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Get Data Store", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Get Data Store", startErr));
 
     const res = await getClient().getDataStore(filespace_id, data_store_id);
     return res.success
-      ? text(formatSuccess("Data Store Details", res.data ?? {}))
-      : text(formatError("Get Data Store", res.error ?? "Unknown error"));
+      ? ok(formatSuccess("Data Store Details", res.data ?? {}))
+      : err(formatError("Get Data Store", res.error ?? "Unknown error"));
   },
 );
 
@@ -428,15 +383,15 @@ server.tool(
     secret_key: z.string().describe("New S3 secret access key"),
   },
   async ({ filespace_id, data_store_id, access_key, secret_key }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Update Data Store", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Update Data Store", startErr));
 
     const res = await getClient().updateDataStore(filespace_id, data_store_id, {
       s3StorageParams: { accessKey: access_key, secretKey: secret_key },
     });
     return res.success
-      ? text(formatSuccess("Updated Data Store Credentials", res.data ?? {}))
-      : text(formatError("Update Data Store", res.error ?? "Unknown error"));
+      ? ok(formatSuccess("Updated Data Store Credentials", res.data ?? {}))
+      : err(formatError("Update Data Store", res.error ?? "Unknown error"));
   },
 );
 
@@ -449,15 +404,15 @@ server.tool(
     confirm: z.boolean().describe("Must be true to proceed"),
   },
   async ({ filespace_id, data_store_id, confirm }) => {
-    if (!confirm) return text("Deletion not confirmed. Set confirm=true to proceed.");
+    if (!confirm) return err("Deletion not confirmed. Set confirm=true to proceed.");
 
-    const err = await ensureReady();
-    if (err) return text(formatError("Delete Data Store", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Delete Data Store", startErr));
 
     const res = await getClient().deleteDataStore(filespace_id, data_store_id);
     return res.success
-      ? text(formatSuccess("Deleted Data Store", { data_store_id }))
-      : text(formatError("Delete Data Store", res.error ?? "Unknown error"));
+      ? ok(formatSuccess("Deleted Data Store", { data_store_id }))
+      : err(formatError("Delete Data Store", res.error ?? "Unknown error"));
   },
 );
 
@@ -473,8 +428,8 @@ server.tool(
     object_id: z.string().describe("Object key/ID within the bucket"),
   },
   async ({ filespace_id, path, data_store_id, object_id }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Create External Entry", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Create External Entry", startErr));
 
     const res = await getClient().createExternalEntry(filespace_id, {
       path,
@@ -483,8 +438,8 @@ server.tool(
       singleObjectFileParams: { objectId: object_id },
     });
     return res.success
-      ? text(formatSuccess(`Created external entry at '${path}'`, res.data ?? {}))
-      : text(formatError("Create External Entry", res.error ?? "Unknown error"));
+      ? ok(formatSuccess(`Created external entry at '${path}'`, res.data ?? {}))
+      : err(formatError("Create External Entry", res.error ?? "Unknown error"));
   },
 );
 
@@ -498,25 +453,25 @@ server.tool(
     next_cursor: z.string().optional().describe("Pagination cursor"),
   },
   async ({ filespace_id, data_store_id, limit, next_cursor }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("List External Entry IDs", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("List External Entry IDs", startErr));
 
     const res = await getClient().listExternalEntryIds(filespace_id, {
       dataStoreId: data_store_id,
       limit,
       nextCursor: next_cursor,
     });
-    if (!res.success) return text(formatError("List External Entry IDs", res.error ?? "Unknown error"));
+    if (!res.success) return err(formatError("List External Entry IDs", res.error ?? "Unknown error"));
 
     const inner = (res.data as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
     const ids = (inner?.ids ?? []) as string[];
     const nextCur = inner?.nextCursor as string | undefined;
 
-    if (ids.length === 0) return text("No external entries found.");
+    if (ids.length === 0) return ok("No external entries found.");
 
     let msg = `${ids.length} external entry ID(s):\n\n` + ids.map((id) => `- ${id}`).join("\n");
     if (nextCur) msg += `\n\nMore available. Use next_cursor='${nextCur}' to continue.`;
-    return text(msg);
+    return ok(msg);
   },
 );
 
@@ -529,15 +484,15 @@ server.tool(
     confirm: z.boolean().describe("Must be true to proceed"),
   },
   async ({ filespace_id, entry_id, confirm }) => {
-    if (!confirm) return text("Deletion not confirmed. Set confirm=true to proceed.");
+    if (!confirm) return err("Deletion not confirmed. Set confirm=true to proceed.");
 
-    const err = await ensureReady();
-    if (err) return text(formatError("Delete External Entry", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Delete External Entry", startErr));
 
     const res = await getClient().deleteExternalEntry(filespace_id, entry_id);
     return res.success
-      ? text(formatSuccess("Deleted External Entry", { entry_id }))
-      : text(formatError("Delete External Entry", res.error ?? "Unknown error"));
+      ? ok(formatSuccess("Deleted External Entry", { entry_id }))
+      : err(formatError("Delete External Entry", res.error ?? "Unknown error"));
   },
 );
 
@@ -551,13 +506,13 @@ server.tool(
     path: z.string().describe("Directory path to create (e.g. /videos/2024/clips)"),
   },
   async ({ filespace_id, path }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Ensure Folder Path", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Ensure Folder Path", startErr));
 
     const result = await ensureFolderPath(getClient(), filespace_id, path);
     return result.ok
-      ? text(formatSuccess(`Ensured folder path '${path}'`, { path, leaf_entry_id: result.leafId }))
-      : text(formatError("Ensure Folder Path", result.error));
+      ? ok(formatSuccess(`Ensured folder path '${path}'`, { path, leaf_entry_id: result.leafId }))
+      : err(formatError("Ensure Folder Path", result.error));
   },
 );
 
@@ -571,13 +526,13 @@ server.tool(
     ll_path: z.string().describe("Full filespace path (e.g. /media/clip.mp4)"),
   },
   async ({ filespace_id, data_store_id, s3_key, ll_path }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Import S3 Object", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Import S3 Object", startErr));
 
     const res = await importS3Object(getClient(), filespace_id, data_store_id, s3_key, ll_path);
     return res.success
-      ? text(formatSuccess(`Imported S3 object '${s3_key}' -> '${ll_path}'`, res.data ?? {}))
-      : text(formatError("Import S3 Object", res.error ?? "Unknown error"));
+      ? ok(formatSuccess(`Imported S3 object '${s3_key}' -> '${ll_path}'`, res.data ?? {}))
+      : err(formatError("Import S3 Object", res.error ?? "Unknown error"));
   },
 );
 
@@ -594,20 +549,20 @@ server.tool(
     stop_on_error: z.boolean().optional().describe("Stop on first error (default false)"),
   },
   async ({ filespace_id, data_store_id, objects, stop_on_error }) => {
-    const err = await ensureReady();
-    if (err) return text(formatError("Bulk Import", err));
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Bulk Import", startErr));
 
     const result = await bulkImportS3Objects(
       getClient(), filespace_id, data_store_id, objects, stop_on_error ?? false,
     );
 
     if (result.failed === 0 && result.dirFailures.length === 0) {
-      return text(formatSuccess(
+      return ok(formatSuccess(
         `Bulk Import: ${result.succeeded}/${result.total} objects imported`,
         result as unknown as Record<string, unknown>,
       ));
     }
-    return text(
+    return err(
       `Bulk Import completed with errors: ${result.succeeded} succeeded, ${result.failed} failed\n\n` +
       JSON.stringify(result, null, 2),
     );

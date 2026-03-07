@@ -8,9 +8,12 @@
   },
   "scripts": {
     "build": "tsc",
-    "admin": "node dist/admin-server.js",
+    "test": "tsc -p test/tsconfig.json && node --test dist-test/*.test.js",
+    "test:build": "tsc && tsc -p test/tsconfig.json",
+    "lucid-api": "node dist/lucid-api-server.js",
     "connect": "node dist/connect-server.js",
-    "browser": "node dist/browser-server.js"
+    "browser": "node dist/browser-server.js",
+    "search": "node dist/search-server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"

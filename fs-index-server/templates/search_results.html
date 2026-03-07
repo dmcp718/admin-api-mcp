@@ -1,0 +1,24 @@
+<tbody id="file-rows">
+{{range .Entries}}
+<tr id="{{.ID}}" class="file-row" data-path="{{.Path}}"{{if .IsDirectory}} ondblclick="fsIndex.navigate(this.dataset.path)"{{end}}>
+    <td{{if .IsDirectory}} onclick="event.stopPropagation(); fsIndex.navigate(this.closest('.file-row').dataset.path)"{{end}}>
+        <div class="col-name search-result-name">
+            {{if .IsDirectory}}
+            <svg class="icon-folder" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5E53E0" stroke-width="1.5"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/></svg>
+            {{else}}
+            <svg class="icon-file" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#999" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg>
+            {{end}}
+            <span class="search-result-text">
+                <span class="file-name">{{.Name}}</span>
+                <span class="search-result-path">{{.ParentDisplay}}</span>
+            </span>
+        </div>
+    </td>
+    <td class="col-size">{{.SizeDisplay}}</td>
+    <td class="col-created">{{.CreatedAt}}</td>
+    <td class="col-modified">{{.ModifiedAt}}</td>
+</tr>
+{{else}}
+<tr><td colspan="5" class="empty-state">No results found for "{{.Query}}"</td></tr>
+{{end}}
+</tbody>

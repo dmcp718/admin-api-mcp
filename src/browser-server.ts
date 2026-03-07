@@ -12,15 +12,17 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 import { generateFilespacesBrowser } from "./connect/browser-template.js";
+import { registerBrandResource } from "./shared/brand-resource.js";
+import { registerCapabilitiesResource } from "./shared/capabilities-resource.js";
+import { ok, err } from "./shared/formatters.js";
 
-function text(s: string) {
-  return { content: [{ type: "text" as const, text: s }] };
-}
+const server = new McpServer(
+  { name: "lucidlink-filespace-browser", version: "1.0.0" },
+  { instructions: `Generates a standalone web app for browsing filespace contents. Use create_filespace_browser — it writes files, installs deps, starts the server, and opens the browser. Never build file browsers manually.` },
+);
 
-const server = new McpServer({
-  name: "lucidlink-filespace-browser",
-  version: "1.0.0",
-});
+registerBrandResource(server);
+registerCapabilitiesResource(server);
 
 server.tool(
   "create_filespace_browser",
@@ -54,7 +56,7 @@ server.tool(
       execSync("npm install --production", { cwd: dir, stdio: "pipe", timeout: 60000 });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      return text(
+      return err(
         "Generated files in " + dir + "/ but npm install failed:\n" + msg +
         "\n\nTry manually: cd " + dir + " && npm install && node server.js"
       );
@@ -71,7 +73,7 @@ server.tool(
     // Wait briefly for server to start
     await new Promise((r) => setTimeout(r, 1500));
 
-    return text(
+    return ok(
       "Filespace Browser is running at http://localhost:" + actualPort + "\n\n" +
       "Project files: " + dir + "/\n" +
       Object.keys(project.files).map((f) => "  " + f).join("\n") +

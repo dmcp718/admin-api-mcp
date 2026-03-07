@@ -1,0 +1,24 @@
+<nav id="breadcrumbs" class="breadcrumbs search-breadcrumb">
+    <a class="breadcrumb-link breadcrumb-home" href="#" onclick="event.preventDefault(); fsIndex.exitSearchMode()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1V10"/></svg>
+    </a>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-link search-breadcrumb-info">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search: "{{.Query}}" &mdash; {{.Total}} results ({{.IndexedCount}} files indexed)
+    </span>
+    <button class="btn btn-ghost btn-sm search-live-btn" onclick="fsIndex.startLiveSearch()" title="Search entire filespace using filesystem walk">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Search entire filespace
+    </button>
+    {{if gt (len .Filespaces) 1}}
+    <span class="fs-filter-group">
+        {{range .Filespaces}}
+        <label class="fs-filter-label">
+            <input type="checkbox" value="{{.}}" {{if index $.ActiveSet .}}checked{{end}} onchange="fsIndex.onFilespaceFilter()">
+            {{.}}
+        </label>
+        {{end}}
+    </span>
+    {{end}}
+</nav>

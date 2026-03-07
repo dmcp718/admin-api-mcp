@@ -214,6 +214,8 @@ function generateIndexHtml(): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LucidLink Connect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/public/style.css">
 </head>
 <body>
@@ -407,7 +409,7 @@ function generateStyleCss(): string {
   --r: 12px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 32px 20px; font-size: 14px; line-height: 1.5; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 32px 20px; font-size: 14px; line-height: 1.5; }
 .app { max-width: 760px; margin: 0 auto; }
 .header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 28px; }
 .logo { width: 36px; height: 36px; background: var(--blue); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

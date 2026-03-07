@@ -187,21 +187,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func mergeClaudeConfig() -> Bool {
-        let adminPath = "\(bundlePath)/Contents/Resources/mcp/admin-server.js"
-        let connectPath = "\(bundlePath)/Contents/Resources/mcp/connect-server.js"
+        // Read server list from manifest (single source of truth)
+        let manifestPath = "\(bundlePath)/Contents/Resources/mcp-servers.json"
+        let mcpDir = "\(bundlePath)/Contents/Resources/mcp"
+        var servers: [String: Any] = [:]
 
-        let mcpEntry: [String: Any] = [
-            "mcpServers": [
-                "lucidlink-admin-api": [
-                    "command": nodePath,
-                    "args": [adminPath]
-                ],
-                "lucidlink-connect-api": [
-                    "command": nodePath,
-                    "args": [connectPath]
-                ]
-            ]
-        ]
+        if let data = FileManager.default.contents(atPath: manifestPath),
+           let entries = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] {
+            for entry in entries {
+                if let name = entry["name"], let script = entry["script"] {
+                    servers[name] = [
+                        "command": nodePath,
+                        "args": ["\(mcpDir)/\(script)"]
+                    ]
+                }
+            }
+        } else {
+            showAlert(title: "Error", message: "Cannot read mcp-servers.json manifest")
+            return false
+        }
+
+        let mcpEntry: [String: Any] = ["mcpServers": servers]
 
         let configDir = (configPath as NSString).deletingLastPathComponent
         let fm = FileManager.default
@@ -319,7 +325,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.center()
         window.isReleasedWhenClosed = false
 
-        let webView = WKWebView(frame: window.contentView!.bounds)
+        let config = WKWebViewConfiguration()
+        config.preferences.isElementFullscreenEnabled = false
+        config.mediaTypesRequiringUserActionForPlayback = .all
+        let webView = WKWebView(frame: window.contentView!.bounds, configuration: config)
         webView.autoresizingMask = [.width, .height]
         webView.setValue(false, forKey: "drawsBackground")
 

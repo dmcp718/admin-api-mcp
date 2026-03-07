@@ -5,7 +5,7 @@ export class RateLimiter {
   private calls: number[] = [];
 
   constructor(
-    private maxCalls: number = 10,
+    private maxCalls: number = 50,
     private windowMs: number = 60_000,
   ) {}
 

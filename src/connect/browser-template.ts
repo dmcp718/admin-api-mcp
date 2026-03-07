@@ -120,7 +120,7 @@ function generateIndexHtml(): string {
     '<meta name="viewport" content="width=device-width, initial-scale=1.0" />\n' +
     "<title>LucidLink Filespace Browser</title>\n" +
     '<link rel="preconnect" href="https://fonts.googleapis.com" />\n' +
-    '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />\n' +
+    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />\n' +
     '<link rel="stylesheet" href="/public/style.css" />\n' +
     "</head>\n" +
     "<body>\n" +
@@ -219,7 +219,7 @@ function generateStyleCss(): string {
     "  --red: #ff6b6b;\n" +
     "  --red-dim: rgba(255,107,107,0.10);\n" +
     "  --mono: 'IBM Plex Mono', monospace;\n" +
-    "  --sans: 'DM Sans', sans-serif;\n" +
+    "  --sans: 'Inter', sans-serif;\n" +
     "}\n" +
     "* { box-sizing: border-box; margin: 0; padding: 0; }\n" +
     "html, body { height: 100%; }\n" +

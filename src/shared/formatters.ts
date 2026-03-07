@@ -2,10 +2,17 @@
  * User-friendly response formatting.
  */
 
+/** MCP CallToolResult shape (index signature required by SDK) */
+export interface ToolResult {
+  [key: string]: unknown;
+  content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
+}
+
 export function formatSuccess(operation: string, details: Record<string, unknown>): string {
-  let msg = `✅ ${operation} completed successfully!\n\n`;
+  let msg = `${operation} completed successfully.\n\n`;
   if (details && Object.keys(details).length > 0) {
-    msg += "📋 Details:\n" + JSON.stringify(details, null, 2);
+    msg += "Details:\n" + JSON.stringify(details, null, 2);
   }
   return msg;
 }
@@ -26,5 +33,15 @@ export function formatError(operation: string, error: string): string {
     }
   }
 
-  return `❌ ${operation} failed\n\n${error}\n\n💡 Tip: Check that the API is running and your token is valid.`;
+  return `${operation} failed: ${error}`;
+}
+
+/** Return a success text result */
+export function ok(s: string): ToolResult {
+  return { content: [{ type: "text" as const, text: s }] };
+}
+
+/** Return an error text result with isError flag */
+export function err(s: string): ToolResult {
+  return { content: [{ type: "text" as const, text: s }], isError: true };
 }

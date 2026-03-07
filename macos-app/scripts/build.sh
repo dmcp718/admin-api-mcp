@@ -19,6 +19,19 @@ rm -rf "$APP_DIR"
 mkdir -p "$BUILD_DIR"
 
 # -----------------------------------------------
+# Step 0: Build fs-index-server Go binary
+# -----------------------------------------------
+echo "[0/6] Building fs-index-server (Go binary)..."
+FS_INDEX_DIR="$FILES_DIR/fs-index-server"
+if [ -d "$FS_INDEX_DIR" ]; then
+    cd "$FS_INDEX_DIR"
+    GOOS=darwin GOARCH=arm64 go build -o "$BUILD_DIR/fs-index-server" .
+    echo "  fs-index-server built for darwin/arm64."
+else
+    echo "  WARNING: fs-index-server/ not found, skipping Go build."
+fi
+
+# -----------------------------------------------
 # Step 1: Build TypeScript MCP servers
 # -----------------------------------------------
 echo "[1/6] Building TypeScript MCP servers..."
@@ -92,7 +105,8 @@ fi
 cp "$BUILD_DIR/node" "$RESOURCES/node"
 chmod +x "$RESOURCES/node"
 
-# MCP server JS (compiled dist/)
+# MCP server manifest and JS (compiled dist/)
+cp "$FILES_DIR/mcp-servers.json" "$RESOURCES/mcp-servers.json"
 cp -R "$FILES_DIR/dist/"* "$RESOURCES/mcp/"
 
 # Production node_modules
@@ -100,6 +114,17 @@ cp -R "$PROD_MODULES/node_modules" "$RESOURCES/node_modules"
 
 # LucidLink API
 cp -R "$BUILD_DIR/api/"* "$RESOURCES/api/"
+
+# fs-index-server binary and templates
+if [ -f "$BUILD_DIR/fs-index-server" ]; then
+    cp "$BUILD_DIR/fs-index-server" "$RESOURCES/fs-index-server"
+    chmod +x "$RESOURCES/fs-index-server"
+    # Copy templates (Go binary expects templates/ next to executable)
+    if [ -d "$FILES_DIR/fs-index-server/templates" ]; then
+        cp -R "$FILES_DIR/fs-index-server/templates" "$RESOURCES/templates"
+    fi
+    echo "  fs-index-server bundled."
+fi
 
 # Cleanup temp prod modules
 rm -rf "$PROD_MODULES"
