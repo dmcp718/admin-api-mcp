@@ -205,28 +205,27 @@ function generateIndexHtml(): string {
 
 function generateStyleCss(): string {
   return `:root {
-  --bg: #151519;
-  --surface: #1c1c22;
-  --surface2: #222228;
-  --border: #2a2a32;
-  --border-hi: #3a3a46;
-  --accent: #B0FB15;
-  --accent-dim: rgba(176, 251, 21, 0.10);
-  --accent-glow: rgba(176, 251, 21, 0.18);
-  --indigo: #5E53E0;
-  --indigo-dim: rgba(94, 83, 224, 0.12);
-  --text: #ffffff;
-  --text-dim: #8a8a96;
-  --text-muted: #555560;
-  --error: #F8685A;
-  --error-dim: rgba(248, 104, 90, 0.12);
+  --bg: #0f1419;
+  --surface: #1a2030;
+  --surface2: #1e2a3a;
+  --border: #2a3548;
+  --border-hi: #38435f;
+  --accent: #4C8BFF;
+  --accent-dark: #3a6fcc;
+  --accent-dim: rgba(76, 139, 255, 0.10);
+  --accent-glow: rgba(76, 139, 255, 0.22);
+  --text: #e2e8f0;
+  --text-dim: #8899aa;
+  --text-muted: #404860;
+  --error: #f87171;
+  --error-dim: rgba(248, 113, 113, 0.12);
   --green: #34d399;
   --green-dim: rgba(52, 211, 153, 0.12);
-  --orange: #FF7E3D;
-  --orange-dim: rgba(255, 126, 61, 0.12);
+  --orange: #ff9f4d;
+  --orange-dim: rgba(255, 159, 77, 0.12);
   --sans: 'Inter', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
-  --r: 10px;
+  --r: 12px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
@@ -315,7 +314,7 @@ body {
   padding: 12px 44px 12px 42px;
   font: inherit;
   font-size: 15px;
-  background: var(--surface);
+  background: #141c28;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--r);
@@ -324,7 +323,7 @@ body {
 }
 #search-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-dim);
+  background: var(--surface2);
 }
 #search-input::placeholder { color: var(--text-muted); }
 .search-hint {

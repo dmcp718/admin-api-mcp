@@ -105,14 +105,14 @@ describe("Search UI template", () => {
     assert.ok(allContent.includes("IBM Plex Mono"), "Should use IBM Plex Mono");
   });
 
-  it("uses dark theme background (#151519)", () => {
+  it("uses dark theme background", () => {
     const css = project.files["public/style.css"];
-    assert.ok(css.includes("#151519"), "Should use charcoal background");
+    assert.ok(css.includes("#0f1419"), "Should use dark background");
   });
 
-  it("uses neon accent (#B0FB15)", () => {
+  it("uses blue accent (#4C8BFF)", () => {
     const css = project.files["public/style.css"];
-    assert.ok(css.includes("#B0FB15"), "Should use neon accent");
+    assert.ok(css.includes("#4C8BFF"), "Should use blue accent");
   });
 
   it("proxies to fs-index-server", () => {
