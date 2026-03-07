@@ -13,7 +13,7 @@ all: build sign dmg
 
 clean:
 	@echo "Cleaning build output (preserving node cache)..."
-	@rm -rf "build/LucidLink MCP.app"
+	@rm -rf "build/LucidLinkMCP.app"
 	@rm -rf build/LucidLinkMCP
 	@rm -rf build/api
 	@rm -rf build/node

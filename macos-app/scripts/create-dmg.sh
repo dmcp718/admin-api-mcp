@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-APP_DIR="$ROOT_DIR/build/LucidLink MCP.app"
+APP_DIR="$ROOT_DIR/build/LucidLinkMCP.app"
 DMG_PATH="$ROOT_DIR/build/LucidLink-MCP.dmg"
 STAGING="$ROOT_DIR/build/dmg-staging"
 

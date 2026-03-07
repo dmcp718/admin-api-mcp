@@ -13,12 +13,9 @@ trap "docker rm '$CONTAINER' >/dev/null 2>&1" EXIT
 
 mkdir -p "$OUTPUT_DIR"
 
-# Copy the essential files
-docker cp "$CONTAINER:$API_SRC/main.js" "$OUTPUT_DIR/main.js"
-docker cp "$CONTAINER:$API_SRC/WasmModule.wasm" "$OUTPUT_DIR/WasmModule.wasm"
+# Copy all dist files (main.js, WasmModule.wasm, index.html, swagger.json, etc.)
+docker cp "$CONTAINER:$API_SRC/." "$OUTPUT_DIR/"
 
-# swagger.json is optional
-docker cp "$CONTAINER:$API_SRC/swagger.json" "$OUTPUT_DIR/swagger.json" 2>/dev/null || true
 
 echo "API files extracted to $OUTPUT_DIR"
 ls -lh "$OUTPUT_DIR"

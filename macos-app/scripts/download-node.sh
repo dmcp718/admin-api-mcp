@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NODE_VERSION="v24.1.0"
+NODE_VERSION="v22.18.0"
 ARCH="arm64"
 CACHE_DIR="$(dirname "$0")/../build/node-cache"
 NODE_TAR="node-${NODE_VERSION}-darwin-${ARCH}.tar.gz"

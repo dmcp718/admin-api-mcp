@@ -247,7 +247,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 if let http = response as? HTTPURLResponse, http.statusCode == 200 {
                     self?.updateStatusIcon(healthy: true)
-                    self?.showAlert(title: "API Status", message: "LucidLink API is running (healthy).")
+                    let port = self?.apiPort ?? 3003
+                    self?.showAlert(title: "API Status",
+                        message: "LucidLink API is running (healthy).\n\nBase URL:  http://localhost:\(port)\nAPI Docs:  http://localhost:\(port)/api/v1/docs",
+                        minWidth: 340)
                 } else {
                     self?.updateStatusIcon(healthy: false)
                     let detail = error?.localizedDescription ?? "Not reachable"
@@ -504,11 +507,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Helpers
 
-    private func showAlert(title: String, message: String) {
+    private func showAlert(title: String, message: String, minWidth: CGFloat = 0) {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
         alert.alertStyle = .informational
+        if minWidth > 0 {
+            let spacer = NSView(frame: NSRect(x: 0, y: 0, width: minWidth, height: 0))
+            alert.accessoryView = spacer
+        }
         alert.runModal()
     }
 

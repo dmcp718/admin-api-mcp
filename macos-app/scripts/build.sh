@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 FILES_DIR="$(cd "$ROOT_DIR/.." && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
-APP_DIR="$BUILD_DIR/LucidLink MCP.app"
+APP_DIR="$BUILD_DIR/LucidLinkMCP.app"
 CONTENTS="$APP_DIR/Contents"
 RESOURCES="$CONTENTS/Resources"
 

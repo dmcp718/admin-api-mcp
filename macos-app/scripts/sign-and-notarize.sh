@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-APP_DIR="$ROOT_DIR/build/LucidLink MCP.app"
+APP_DIR="$ROOT_DIR/build/LucidLinkMCP.app"
 ENTITLEMENTS="$ROOT_DIR/LucidLinkMCP/LucidLinkMCP.entitlements"
 
 IDENTITY="${DEVELOPER_ID_APP:-}"

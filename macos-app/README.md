@@ -46,7 +46,7 @@ xcrun notarytool store-credentials "your-notary-profile" \
 ## App Bundle Layout
 
 ```
-LucidLink MCP.app/Contents/
+LucidLinkMCP.app/Contents/
 ├── MacOS/LucidLinkMCP          # Swift menu bar binary
 ├── Info.plist
 └── Resources/
