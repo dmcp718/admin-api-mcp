@@ -14,13 +14,23 @@ Read this guide before taking action — it will save you from mistakes.
 
 ARCHITECTURE
 ============
-                                    ┌─ lucidlink-api (28 tools)
+                                    ┌─ lucidlink-api (30 tools)
   Claude Desktop ──► MCP servers ───┼─ lucidlink-connect-api (18 tools)
                                     ├─ lucidlink-filespace-search (5 tools)
                                     └─ lucidlink-filespace-browser (1 tool)
                                           │
-                          LucidLink API ◄──┘  (localhost:3003, Node.js process)
+                          LucidLink API ◄──┘  (localhost:3003)
                           fs-index-server ◄── (localhost:3201, Go binary)
+
+IMPORTANT — LucidLink API hosting model:
+The LucidLink API is normally deployed as a self-hosted Docker container (lucidlink/lucidlink-api
+on DockerHub) that customers run on their own infrastructure. This is the standard, production
+deployment model — see search_api_docs for deployment, scaling, and best practices documentation.
+
+This macOS app (LucidLinkMCP.app) bundles the same API as a native Node.js process for local
+convenience, eliminating the need for Docker. The bundled version is functionally identical to
+the container version. When discussing deployment or architecture with users, always present
+the Docker container as the primary/standard approach.
 
 The LucidLink API is a single process shared by lucidlink-api and lucidlink-connect-api.
 The fs-index-server is a separate Go binary managed by lucidlink-filespace-search.
@@ -76,6 +86,19 @@ Permissions:
   list_permissions          — list permissions on a filespace
   update_permission         — change permission level
   revoke_permission         — remove a permission
+
+Documentation search:
+  search_api_docs           — search across all LucidLink API documentation
+                              Covers: API overview, authentication, deployment,
+                              best practices, endpoint reference, scaling,
+                              Connect overview, Connect files usage.
+                              Use for open-ended questions about the LucidLink API.
+
+Resources:
+  lucidlink://docs/index    — index of all documentation topics
+  lucidlink://docs/{topic}  — individual doc topics (api-overview, authentication,
+                              deployment, best-practices, endpoints-reference,
+                              scaling, connect-overview, connect-files)
 
 Example workflow — set up a new filespace:
   1. list_providers → get provider ID
@@ -181,6 +204,10 @@ WHEN TO USE WHICH SERVER
 "Link S3 objects into a filespace"→ lucidlink-connect-api: get_connect_workflow_guide, then follow steps
 "Create a Connect import UI"      → lucidlink-connect-api: create_connect_ui
 "Set folder permissions"          → lucidlink-api: grant_permission
+"How do I rotate API keys?"       → lucidlink-api: search_api_docs
+"What's the security model?"      → lucidlink-api: search_api_docs
+"How to scale with Docker?"       → lucidlink-api: search_api_docs
+"How do external entries work?"   → lucidlink-api: search_api_docs
 
 GENERATING UIs
 ==============

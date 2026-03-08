@@ -109,6 +109,12 @@ chmod +x "$RESOURCES/node"
 cp "$FILES_DIR/mcp-servers.json" "$RESOURCES/mcp-servers.json"
 cp -R "$FILES_DIR/dist/"* "$RESOURCES/mcp/"
 
+# Doc chunks (markdown files read at runtime by docs-search.js)
+if [ -d "$FILES_DIR/src/docs/chunks" ]; then
+    mkdir -p "$RESOURCES/mcp/docs/chunks"
+    cp "$FILES_DIR/src/docs/chunks/"*.md "$RESOURCES/mcp/docs/chunks/"
+fi
+
 # Production node_modules
 cp -R "$PROD_MODULES/node_modules" "$RESOURCES/node_modules"
 

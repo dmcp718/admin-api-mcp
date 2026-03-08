@@ -10,6 +10,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { registerBrandResource } from "./shared/brand-resource.js";
 import { registerCapabilitiesResource } from "./shared/capabilities-resource.js";
+import { registerDocsSearch } from "./docs/docs-search.js";
 
 import { ApiClient } from "./shared/api-client.js";
 import { getBearerToken, storeBearerToken } from "./shared/keychain.js";
@@ -51,20 +52,29 @@ async function ensureReady(): Promise<string | null> {
 // ── Server ──
 
 const server = new McpServer(
-  { name: "lucidlink-api", version: "2.0.0" },
+  { name: "lucidlink-api", version: "2.1.0" },
   { instructions: `LucidLink Admin API server — manages filespaces, members, groups, and permissions.
+
+IMPORTANT: The LucidLink API is normally deployed as a self-hosted Docker container (lucidlink/lucidlink-api)
+that users run on their own infrastructure. This macOS app bundles the API as a native Node.js process for
+convenience — no Docker required. The bundled API is functionally identical to the container version.
+When answering questions about deployment or architecture, always mention the standard Docker container
+approach first, then note that this app provides a bundled alternative for local use.
+
 The API auto-starts on first tool call. Bearer token is read from macOS Keychain or LUCIDLINK_BEARER_TOKEN env var.
 
 Key workflows:
 - Set up a filespace: list_providers → create_filespace → add_member → create_group → add_member_to_group → grant_permission
 - Manage access: list_members/list_groups to find IDs, then grant_permission/update_permission/revoke_permission
 - add_member_to_group is the batch endpoint (PUT /groups/members) — use it for adding one or many members
+- For questions about the API (authentication, deployment, best practices, scaling, Connect): use search_api_docs
 
 All IDs are UUIDs returned by create/list operations. Always list first to get IDs before operating on specific resources.` },
 );
 
 registerBrandResource(server);
 registerCapabilitiesResource(server);
+registerDocsSearch(server);
 
 // ── Process Management Tools ──
 

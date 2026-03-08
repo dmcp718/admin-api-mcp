@@ -102,6 +102,11 @@ async function ensureReady(): Promise<string | null> {
 const server = new McpServer(
   { name: "lucidlink-connect-api", version: "2.0.0" },
   { instructions: `LucidLink Connect API server — links existing S3 objects into filespaces as read-only external entries.
+
+IMPORTANT: The LucidLink API is normally deployed as a self-hosted Docker container (lucidlink/lucidlink-api)
+that users run on their own infrastructure. This macOS app bundles the API as a native Node.js process for
+convenience — no Docker required. The bundled API is functionally identical to the container version.
+
 The API auto-starts on first tool call. Use get_connect_workflow_guide for a complete quickstart.
 
 Typical workflow: create_data_store → ensure_folder_path → bulk_import_s3_objects

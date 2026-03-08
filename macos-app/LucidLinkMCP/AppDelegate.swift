@@ -302,7 +302,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showAbout() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
-        showAlert(title: "LucidLink MCP", message: "Version \(version)\nMCP servers for Claude Desktop.")
+        showAlert(title: "LucidLink MCP", message: "Version \(version)\nMCP servers and bundled LucidLink API for Claude Desktop.\n\nThe LucidLink API is normally deployed as a Docker container.\nThis app bundles it as a native process for local convenience.")
     }
 
     // MARK: - Help
@@ -436,20 +436,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         <body>
 
         <h2>Getting Started</h2>
-        <p>LucidLink MCP provides four MCP servers for Claude Desktop:</p>
+        <p>LucidLink MCP provides four MCP servers and a bundled LucidLink API for Claude Desktop:</p>
         <div class="card">
             <table>
-                <tr><td>Admin API</td><td>Manage filespaces, members, groups, and permissions via the LucidLink Admin API</td></tr>
+                <tr><td>Admin API</td><td>Manage filespaces, members, groups, and permissions (30 tools + API docs search)</td></tr>
                 <tr><td>Connect API</td><td>Manage data stores, entries, and S3 workflows via LucidLink Connect</td></tr>
                 <tr><td>Filespace Search</td><td>Full-text search across indexed filespaces with a generated web UI</td></tr>
                 <tr><td>Filespace Browser</td><td>Generate a web-based filespace browser for navigating mounted filespaces</td></tr>
             </table>
         </div>
 
+        <h2>About the Bundled API</h2>
+        <p>The LucidLink API is normally deployed as a <strong>self-hosted Docker container</strong> (<code>lucidlink/lucidlink-api</code>) that customers run on their own infrastructure. This is the standard, production deployment model.</p>
+        <p>This macOS app bundles the same API as a <strong>native Node.js process</strong> for local convenience &mdash; no Docker required. The bundled version is functionally identical to the container version.</p>
+        <p class="dim">For production deployments, scaling, and best practices, ask Claude to <code>search_api_docs</code> or see the LucidLink support documentation.</p>
+
         <h2>First Launch</h2>
         <p>On first launch, the app automatically:</p>
         <ol>
-            <li>Starts the LucidLink API on port <code>\(apiPort)</code></li>
+            <li>Starts the bundled LucidLink API on port <code>\(apiPort)</code></li>
             <li>Configures Claude Desktop with all four MCP server entries</li>
             <li>Shows a notification to restart Claude Desktop</li>
         </ol>
