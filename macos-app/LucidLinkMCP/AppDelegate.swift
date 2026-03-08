@@ -436,11 +436,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         <body>
 
         <h2>Getting Started</h2>
-        <p>LucidLink MCP provides two MCP servers for Claude Desktop:</p>
+        <p>LucidLink MCP provides four MCP servers for Claude Desktop:</p>
         <div class="card">
             <table>
-                <tr><td>Admin API</td><td>Manage filespaces, members, groups, and permissions</td></tr>
-                <tr><td>Connect API</td><td>Manage data stores, entries, and S3 workflows</td></tr>
+                <tr><td>Admin API</td><td>Manage filespaces, members, groups, and permissions via the LucidLink Admin API</td></tr>
+                <tr><td>Connect API</td><td>Manage data stores, entries, and S3 workflows via LucidLink Connect</td></tr>
+                <tr><td>Filespace Search</td><td>Full-text search across indexed filespaces with a generated web UI</td></tr>
+                <tr><td>Filespace Browser</td><td>Generate a web-based filespace browser for navigating mounted filespaces</td></tr>
             </table>
         </div>
 
@@ -448,10 +450,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         <p>On first launch, the app automatically:</p>
         <ol>
             <li>Starts the LucidLink API on port <code>\(apiPort)</code></li>
-            <li>Configures Claude Desktop with the MCP server entries</li>
+            <li>Configures Claude Desktop with all four MCP server entries</li>
             <li>Shows a notification to restart Claude Desktop</li>
         </ol>
         <p class="dim">After restarting Claude Desktop, the MCP tools will be available.</p>
+
+        <h2>Filespace Search</h2>
+        <p>The Search MCP server works with <strong>fs-index-server</strong>, a Go binary that crawls and indexes mounted LucidLink filespaces using SQLite FTS5.</p>
+        <div class="card">
+            <table>
+                <tr><td>Search UI</td><td>Ask Claude to <em>"build a search UI"</em> &mdash; generates a full web app at <code>localhost:3099</code></td></tr>
+                <tr><td>Features</td><td>Full-text search, directory browsing, breadcrumb navigation, direct links to files</td></tr>
+                <tr><td>Direct Links</td><td>Each file and folder has a direct link button that opens the LucidLink web URL</td></tr>
+                <tr><td>Indexer</td><td>fs-index-server runs on port <code>3201</code>, auto-discovers all mounted filespaces</td></tr>
+            </table>
+        </div>
 
         <h2>Menu Bar Icon</h2>
         <div class="card">
@@ -468,7 +481,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         </div>
         <div class="menu-item">
             <strong>Configure Claude Desktop</strong>
-            <span class="dim">Writes MCP server entries into Claude Desktop's config. Preserves your other MCP servers. Use this after moving the app to a new location.</span>
+            <span class="dim">Writes all four MCP server entries into Claude Desktop's config. Preserves your other MCP servers. Use this after moving the app or updating.</span>
         </div>
         <div class="menu-item">
             <strong>Check API Status</strong>
@@ -490,6 +503,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         <div class="trouble-item">
             <strong>"API returned 502" error</strong>
             <p>The API is still starting up. Wait a few seconds and retry. If it persists, stop and restart the API from the menu.</p>
+        </div>
+        <div class="trouble-item">
+            <strong>Search UI shows "No filespaces mounted"</strong>
+            <p>Ensure LucidLink filespaces are mounted and fs-index-server is running on port <code>3201</code>. The indexer auto-discovers mounts via <code>lucid list</code>.</p>
         </div>
         <div class="trouble-item">
             <strong>App blocked by macOS Gatekeeper</strong>

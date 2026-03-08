@@ -4,6 +4,7 @@ import (
 	"log"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -12,29 +13,31 @@ type FilespaceMount struct {
 	InstanceID string
 	MountPoint string
 	Name       string // parsed from lucid list output
+	Port       int    // LucidLink client API port (from lucid list)
 }
 
-// discoverMounts uses `lucid list` to get instance IDs, then
+// discoverMounts uses `lucid list` to get instance IDs and ports, then
 // `lucid --instance <id> status` to parse each mount point.
 func discoverMounts(lucidBin string) []FilespaceMount {
-	// Step 1: Get instance list
+	// Step 1: Get instance list (includes ports)
 	out, err := exec.Command(lucidBin, "list").CombinedOutput()
 	if err != nil {
 		log.Printf("mount discovery: lucid list failed: %v (%s)", err, strings.TrimSpace(string(out)))
 		return nil
 	}
 
-	instanceIDs := parseInstanceIDs(string(out))
-	if len(instanceIDs) == 0 {
+	instances := parseInstanceList(string(out))
+	if len(instances) == 0 {
 		log.Printf("mount discovery: no instances found in lucid list output")
 		return nil
 	}
 
 	// Step 2: Get mount point for each instance
 	var mounts []FilespaceMount
-	for _, id := range instanceIDs {
-		mount := getInstanceMount(lucidBin, id)
+	for _, inst := range instances {
+		mount := getInstanceMount(lucidBin, inst.id)
 		if mount != nil {
+			mount.Port = inst.port
 			mounts = append(mounts, *mount)
 		}
 	}
@@ -42,36 +45,39 @@ func discoverMounts(lucidBin string) []FilespaceMount {
 	return mounts
 }
 
-// parseInstanceIDs extracts instance IDs from `lucid list` output.
-// The output format varies but typically shows instance IDs as numeric values.
-func parseInstanceIDs(output string) []string {
-	var ids []string
+// instanceInfo holds parsed data from a single lucid list row.
+type instanceInfo struct {
+	id   string
+	name string
+	port int
+}
+
+// parseInstanceList parses `lucid list` output to extract instance ID, name, and port.
+// Example output:
+//   INSTANCE ID        FILESPACE                    PORT        MODE
+//   2045               connect-us.lucid-demo        9823        live
+func parseInstanceList(output string) []instanceInfo {
+	var result []instanceInfo
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 
-	// Match lines containing instance IDs — look for numeric ID at start of line
-	// or in structured output columns
-	idRe := regexp.MustCompile(`^\s*(\d+)\s`)
-	nameRe := regexp.MustCompile(`([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)`)
+	// Regex: instance_id  filespace_name  port  mode
+	lineRe := regexp.MustCompile(`^\s*(\d+)\s+(\S+)\s+(\d+)\s+(\S+)`)
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "INSTANCE") || strings.HasPrefix(line, "---") {
 			continue
 		}
-
-		// Try numeric instance ID at start of line
-		if m := idRe.FindStringSubmatch(line); len(m) > 1 {
-			ids = append(ids, m[1])
-			continue
-		}
-
-		// Fallback: look for filespace.domain pattern and use it
-		if m := nameRe.FindStringSubmatch(line); len(m) > 1 {
-			ids = append(ids, m[1])
+		if m := lineRe.FindStringSubmatch(line); len(m) > 3 {
+			port, _ := strconv.Atoi(m[3])
+			result = append(result, instanceInfo{
+				id:   m[1],
+				name: m[2],
+				port: port,
+			})
 		}
 	}
-
-	return ids
+	return result
 }
 
 // getInstanceMount runs `lucid --instance <id> status` and parses the mount point.

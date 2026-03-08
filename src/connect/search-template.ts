@@ -208,6 +208,7 @@ function generateIndexHtml(): string {
           <th id="sort-name" class="sortable sorted" data-sort="name">
             Name <span id="sort-arrow-name" class="sort-arrow">&#9650;</span>
           </th>
+          <th class="th-link">Direct Link</th>
           <th id="sort-size" class="sortable th-right" data-sort="size">
             Size <span id="sort-arrow-size" class="sort-arrow"></span>
           </th>
@@ -221,7 +222,7 @@ function generateIndexHtml(): string {
       </thead>
       <tbody id="file-rows">
         <tr>
-          <td colspan="4" class="empty-state">
+          <td colspan="5" class="empty-state">
             <div class="loading-overlay">
               <div class="spinner"></div>
               Loading files...
@@ -936,7 +937,44 @@ body {
 }
 @media (max-width: 500px) {
   .col-size, .th-size { display: none; }
-}`;
+}
+
+/* Direct Link column */
+.th-link { width: 120px; text-align: center !important; cursor: default !important; }
+.th-link:hover { color: var(--color-gray-40) !important; }
+.col-link { width: 120px; text-align: center; white-space: nowrap; }
+
+.link-btn {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.link-btn:hover { background: rgba(76, 139, 255, 0.15); }
+.link-btn.loading { opacity: 0.5; pointer-events: none; }
+.link-btn.success { border-color: var(--color-success); color: var(--color-success); }
+.link-btn.fail { border-color: var(--color-error); color: var(--color-error); }
+
+.copy-btn {
+  font-size: 0.7rem;
+  padding: 2px 4px;
+  margin-left: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-gray-60);
+  background: transparent;
+  color: var(--color-gray-40);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.copy-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.copy-btn.loading { opacity: 0.5; pointer-events: none; }
+.copy-btn.copied { border-color: var(--color-success); color: var(--color-success); }`;
 }
 
 // ── public/app.js ──
@@ -1064,6 +1102,10 @@ function showHome() {
       '<td><div class="col-name">' + ICON_DIR +
       '<span class="file-name">' + h(m.name) + '/</span>' +
       '</div></td>' +
+      '<td class="col-link">' +
+      '<button class="link-btn" data-path="' + h(m.mountPoint) + '" onclick="event.stopPropagation(); app.directLink(this)">direct link</button>' +
+      '<button class="copy-btn" data-path="' + h(m.mountPoint) + '" onclick="event.stopPropagation(); app.copyLink(this)" title="Copy link"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>' +
+      '</td>' +
       '<td class="col-size" id="dir-size-' + i + '"><span class="size-loading">calculating\\u2026</span></td>' +
       '<td class="col-created"></td>' +
       '<td class="col-modified"></td>' +
@@ -1231,6 +1273,10 @@ function renderDirectoryTable() {
       (isDir ? ICON_DIR : ICON_FILE) +
       '<span class="file-name">' + h(e.name) + (isDir ? "/" : "") + '</span>' +
       '</div></td>' +
+      '<td class="col-link">' +
+      '<button class="link-btn" data-path="' + h(e.path) + '" onclick="event.stopPropagation(); app.directLink(this)">direct link</button>' +
+      '<button class="copy-btn" data-path="' + h(e.path) + '" onclick="event.stopPropagation(); app.copyLink(this)" title="Copy link"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>' +
+      '</td>' +
       '<td class="col-size"' + (isDir ? ' id="dir-size-' + di + '"' : '') + '>' +
       (isDir ? '<span class="size-loading">calculating\\u2026</span>' : formatSize(e.size)) + '</td>' +
       '<td class="col-created">' + h(created) + '</td>' +
@@ -1385,9 +1431,14 @@ function executeSearch(query) {
       var total = countMatch ? parseInt(countMatch[1]) : entries.length;
       var indexed = indexedMatch ? parseInt(indexedMatch[1]) : 0;
 
+      // Filter hidden files unless showHidden is enabled
+      if (!showHidden) {
+        entries = entries.filter(function (e) { return !e.name.startsWith("."); });
+      }
+
       currentEntries = entries;
       $("dir-summary").textContent = formatNum(total) + " result" + (total !== 1 ? "s" : "") +
-        ' for "' + query + '"' + (indexed ? " \\u00B7 " + formatNum(indexed) + " files searched" : "");
+        ' for "' + query + '"';
 
       if (entries.length === 0) {
         renderEmpty('No results for "' + query + '"');
@@ -1402,23 +1453,53 @@ function executeSearch(query) {
 }
 
 function parseSSEResults(text) {
-  var pathMatches = text.match(/data-path="([^"]+)"/g) || [];
+  // Parse each <tr> row individually to correctly detect directories
+  var rowRegex = /<tr[^>]*data-path="([^"]+)"[^>]*>([\\s\\S]*?)<\\/tr>/g;
   var entries = [];
-  for (var i = 0; i < pathMatches.length; i++) {
-    var path = pathMatches[i].replace('data-path="', "").replace('"', "");
+  var match;
+  while ((match = rowRegex.exec(text)) !== null) {
+    var path = match[1];
+    var rowHtml = match[2];
     var name = path.split("/").pop() || path;
-    var isDir = text.indexOf('data-path="' + path + '"') !== -1 && text.indexOf("folder-icon") !== -1;
+    var isDir = rowHtml.indexOf("icon-folder") !== -1;
+
+    // Extract size from col-size cell
+    var sizeMatch = rowHtml.match(/col-size[^>]*>([^<]*)</);
+    var sizeText = sizeMatch ? sizeMatch[1].trim() : "";
+    var size = parseDisplaySize(sizeText);
+
+    // Extract dates from col-created and col-modified cells
+    var cells = rowHtml.match(/col-created[^>]*>([^<]*)<|col-modified[^>]*>([^<]*)</g) || [];
+    var created = "";
+    var modified = "";
+    for (var c = 0; c < cells.length; c++) {
+      var cm = cells[c].match(/>([^<]*)/);
+      var val = cm ? cm[1].trim() : "";
+      if (cells[c].indexOf("col-created") !== -1) created = val;
+      if (cells[c].indexOf("col-modified") !== -1) modified = val;
+    }
+
     entries.push({
       path: path,
       name: name,
       is_directory: isDir,
       parent_path: path.substring(0, path.length - name.length),
-      size: 0,
-      created_at: "",
-      modified_at: ""
+      size: size,
+      created_at: created,
+      modified_at: modified
     });
   }
   return entries;
+}
+
+function parseDisplaySize(s) {
+  if (!s) return 0;
+  var m = s.match(/^([\\d.]+)\\s*(B|KB|MB|GB|TB)$/i);
+  if (!m) return 0;
+  var val = parseFloat(m[1]);
+  var unit = m[2].toUpperCase();
+  var mult = { B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 };
+  return Math.round(val * (mult[unit] || 1));
 }
 
 function renderSearchTable() {
@@ -1437,6 +1518,10 @@ function renderSearchTable() {
       '<span class="file-name">' + h(e.name) + '</span>' +
       '<span class="file-path">' + h(parentPath) + '</span>' +
       '</div></div></td>' +
+      '<td class="col-link">' +
+      '<button class="link-btn" data-path="' + h(e.path) + '" onclick="event.stopPropagation(); app.directLink(this)">direct link</button>' +
+      '<button class="copy-btn" data-path="' + h(e.path) + '" onclick="event.stopPropagation(); app.copyLink(this)" title="Copy link"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>' +
+      '</td>' +
       '<td class="col-size">' + (e.size ? formatSize(e.size) : "") + '</td>' +
       '<td class="col-created">' + (e.created_at ? h(formatDate(e.created_at)) : "") + '</td>' +
       '<td class="col-modified">' + (e.modified_at ? h(formatDate(e.modified_at)) : "") + '</td>' +
@@ -1669,12 +1754,12 @@ function toggleHelp() {
 
 // ── UI helpers ──
 function showLoading() {
-  $("file-rows").innerHTML = '<tr><td colspan="4" class="empty-state">' +
+  $("file-rows").innerHTML = '<tr><td colspan="5" class="empty-state">' +
     '<div class="loading-overlay"><div class="spinner"></div>Loading...</div></td></tr>';
 }
 
 function renderEmpty(msg) {
-  $("file-rows").innerHTML = '<tr><td colspan="4" class="empty-state">' + h(msg) + '</td></tr>';
+  $("file-rows").innerHTML = '<tr><td colspan="5" class="empty-state">' + h(msg) + '</td></tr>';
 }
 
 // ── Formatters ──
@@ -1696,12 +1781,66 @@ function formatDate(iso) {
   } catch (_) { return iso; }
 }
 
+// ── Direct Link ──
+function directLink(btn) {
+  var path = btn.dataset.path;
+  btn.classList.add("loading");
+  btn.textContent = "...";
+  fetch("/api/direct-link?path=" + encodeURIComponent(path))
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.url) {
+        window.open(data.url, "_blank");
+        btn.classList.remove("loading");
+        btn.classList.add("success");
+        btn.textContent = "opened";
+        setTimeout(function () { btn.classList.remove("success"); btn.textContent = "direct link"; }, 2000);
+      } else {
+        throw new Error(data.error || "no url");
+      }
+    })
+    .catch(function () {
+      btn.classList.remove("loading");
+      btn.classList.add("fail");
+      btn.textContent = "failed";
+      setTimeout(function () { btn.classList.remove("fail"); btn.textContent = "direct link"; }, 2000);
+    });
+}
+
+function copyLink(btn) {
+  var path = btn.dataset.path;
+  btn.classList.add("loading");
+  var origText = btn.innerHTML;
+  btn.textContent = "...";
+  fetch("/api/direct-link?path=" + encodeURIComponent(path))
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.url) {
+        return navigator.clipboard.writeText(data.url).then(function () {
+          btn.classList.remove("loading");
+          btn.classList.add("copied");
+          btn.textContent = "copied!";
+          setTimeout(function () { btn.classList.remove("copied"); btn.innerHTML = origText; }, 2000);
+        });
+      } else {
+        throw new Error(data.error || "no url");
+      }
+    })
+    .catch(function () {
+      btn.classList.remove("loading");
+      btn.textContent = "failed";
+      setTimeout(function () { btn.innerHTML = origText; }, 2000);
+    });
+}
+
 // ── Expose API ──
 window.app = {
   navigate: navigate,
   sort: sort,
   goBack: goBack,
-  toggleHelp: toggleHelp
+  toggleHelp: toggleHelp,
+  directLink: directLink,
+  copyLink: copyLink
 };
 `;
 }

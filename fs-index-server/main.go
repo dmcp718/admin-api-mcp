@@ -158,6 +158,11 @@ func main() {
 		HandleListFilespaces(cfg, mounts)(w, r)
 	})
 
+	// Direct link generation — proxies to LucidLink client API
+	mux.HandleFunc("/api/direct-link", func(w http.ResponseWriter, r *http.Request) {
+		HandleDirectLink(mounts)(w, r)
+	})
+
 	// Mount info — returns discovered mounts with instance details
 	mux.HandleFunc("/api/mounts", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

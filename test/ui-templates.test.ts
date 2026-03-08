@@ -144,13 +144,23 @@ describe("Search UI template", () => {
 
   it("has filespace filter chips", () => {
     const appJs = project.files["public/app.js"];
-    assert.ok(appJs.includes("/api/filespaces"), "Should load filespace list");
+    assert.ok(appJs.includes("/api/mounts"), "Should load filespace list from mounts");
     assert.ok(appJs.includes("chip"), "Should render filter chips");
   });
 
   it("has crawl progress display", () => {
     const appJs = project.files["public/app.js"];
     assert.ok(appJs.includes("/api/crawl/stats"), "Should poll crawl stats");
+  });
+
+  it("has direct link column", () => {
+    const appJs = project.files["public/app.js"];
+    assert.ok(appJs.includes("/api/direct-link"), "Should call direct link API");
+    assert.ok(appJs.includes("directLink"), "Should have directLink function");
+    assert.ok(appJs.includes("copyLink"), "Should have copyLink function");
+    const css = project.files["public/style.css"];
+    assert.ok(css.includes(".link-btn"), "Should have link button styles");
+    assert.ok(css.includes(".copy-btn"), "Should have copy button styles");
   });
 
   it("includes setup instructions", () => {
