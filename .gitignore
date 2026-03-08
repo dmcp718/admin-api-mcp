@@ -7,3 +7,4 @@ dist-test/
 !package.json
 !package-lock.json
 !tsconfig.json
+fs-index-server/fs-index-server

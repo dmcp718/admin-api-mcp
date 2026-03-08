@@ -13,6 +13,44 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// commonAncestor returns the deepest common directory prefix across all mount points.
+// e.g. ["/Volumes/lucid-demo/connect-us", "/Volumes/team-us"] -> "/Volumes"
+func commonAncestor(mounts []FilespaceMount) string {
+	if len(mounts) == 0 {
+		return "/Volumes"
+	}
+	if len(mounts) == 1 {
+		return filepath.Dir(mounts[0].MountPoint)
+	}
+	// Split first path into segments
+	parts := strings.Split(filepath.Clean(mounts[0].MountPoint), string(filepath.Separator))
+	// Narrow down by comparing with each subsequent mount
+	for _, m := range mounts[1:] {
+		mp := strings.Split(filepath.Clean(m.MountPoint), string(filepath.Separator))
+		n := len(parts)
+		if len(mp) < n {
+			n = len(mp)
+		}
+		match := 0
+		for i := 0; i < n; i++ {
+			if parts[i] != mp[i] {
+				break
+			}
+			match = i + 1
+		}
+		parts = parts[:match]
+	}
+	result := strings.Join(parts, string(filepath.Separator))
+	if result == "" {
+		return "/"
+	}
+	// On Unix, ensure it starts with /
+	if !strings.HasPrefix(result, "/") {
+		result = "/" + result
+	}
+	return result
+}
+
 func main() {
 	cfg := LoadConfig()
 
@@ -27,9 +65,9 @@ func main() {
 		}
 	}
 
-	// Set mount prefix from first discovered mount's parent, or use env override
+	// Set mount prefix to common ancestor of all discovered mount points
 	if cfg.MountPrefix == "" && len(mounts) > 0 {
-		cfg.MountPrefix = filepath.Dir(mounts[0].MountPoint)
+		cfg.MountPrefix = commonAncestor(mounts)
 	}
 	if cfg.MountPrefix == "" {
 		cfg.MountPrefix = "/Volumes"

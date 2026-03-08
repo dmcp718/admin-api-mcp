@@ -107,7 +107,8 @@ describe("Search UI template", () => {
 
   it("uses dark theme background", () => {
     const css = project.files["public/style.css"];
-    assert.ok(css.includes("#0f1419"), "Should use dark background");
+    const hasDarkBg = css.includes("#0f1419") || css.includes("#151519");
+    assert.ok(hasDarkBg, "Should use dark background (#0f1419 or #151519)");
   });
 
   it("uses blue accent (#4C8BFF)", () => {
