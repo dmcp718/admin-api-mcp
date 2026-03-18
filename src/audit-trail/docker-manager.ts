@@ -54,14 +54,14 @@ function run(
 }
 
 export class DockerManager {
-  constructor(private repoDir: string) {}
+  constructor(private workDir: string) {}
 
   get composeFile(): string {
-    return join(this.repoDir, "docker", "docker-compose.yml");
+    return join(this.workDir, "docker-compose.yml");
   }
 
   get envFile(): string {
-    return join(this.repoDir, ".env");
+    return join(this.workDir, ".env");
   }
 
   hasComposeFile(): boolean {
@@ -97,7 +97,7 @@ export class DockerManager {
     // Treat as success if containers are running afterward.
     const result = await run(
       ["compose", "-f", this.composeFile, "up", "-d"],
-      this.repoDir,
+      this.workDir,
       180_000,
     );
     if (!result.success) {
@@ -112,20 +112,20 @@ export class DockerManager {
   async down(removeVolumes = false): Promise<DockerResult> {
     const args = ["compose", "-f", this.composeFile, "down"];
     if (removeVolumes) args.push("-v");
-    return run(args, this.repoDir);
+    return run(args, this.workDir);
   }
 
   async ps(): Promise<DockerResult> {
     return run(
       ["compose", "-f", this.composeFile, "ps", "--format", "json"],
-      this.repoDir,
+      this.workDir,
     );
   }
 
   async logs(service?: string, lines = 50): Promise<DockerResult> {
     const args = ["compose", "-f", this.composeFile, "logs", "--tail", String(lines)];
     if (service) args.push(service);
-    return run(args, this.repoDir);
+    return run(args, this.workDir);
   }
 }
 

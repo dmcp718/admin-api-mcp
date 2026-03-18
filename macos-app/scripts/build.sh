@@ -120,6 +120,10 @@ cp -R "$PROD_MODULES/node_modules" "$RESOURCES/node_modules"
 
 # LucidLink API
 cp -R "$BUILD_DIR/api/"* "$RESOURCES/api/"
+# API's main.js uses require() (CommonJS). Without a package.json in its
+# directory, Node walks up and may find a parent "type":"module" package.json,
+# which breaks the bundle. Pin it to CommonJS explicitly.
+echo '{"type":"commonjs"}' > "$RESOURCES/api/package.json"
 
 # fs-index-server binary and templates
 if [ -f "$BUILD_DIR/fs-index-server" ]; then

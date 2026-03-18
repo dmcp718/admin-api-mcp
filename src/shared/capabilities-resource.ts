@@ -204,7 +204,7 @@ Mount discovery:
   discover_filespace_mounts   — find mounted filespaces via lucid CLI (call FIRST)
 
 Stack management:
-  setup_audit_trail           — configure repo, mount point, validate Docker (auto-discovers if no mount given)
+  setup_audit_trail           — generate stack files, configure mount point, validate Docker (auto-discovers if no mount given)
   start_audit_trail           — docker compose up, wait for health
   stop_audit_trail            — docker compose down (optional: remove volumes)
   audit_trail_status          — container health, cluster status, doc count

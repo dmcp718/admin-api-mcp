@@ -2,21 +2,23 @@
  * Integration test for audit trail MCP server components.
  *
  * Tests: DockerManager, OpenSearchClient, and all tool logic.
- * Requires: Docker running, ll-audit-trail-es repo available.
+ * Requires: Docker running, LucidLink filespace mounted.
  *
  * Usage: npx tsx test/audit-trail-integration.ts
  */
 
-const REPO_DIR = "/Users/davidphillips/Cursor_projects/ll-audit-trail-es";
-const FSMOUNTPOINT = "/Volumes/nab";
-const OS_URL = "http://localhost:9200";
-
-// ── Imports ──
+import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { DockerManager, checkDocker } from "../src/audit-trail/docker-manager.js";
+import { writeStackFiles } from "../src/audit-trail/stack-template.js";
 import { OpenSearchClient } from "../src/audit-trail/opensearch-client.js";
 import { AUDIT_TRAIL_INDEX, VALID_ACTIONS } from "../src/audit-trail/types.js";
 import type { AuditEvent, SearchHit } from "../src/audit-trail/types.js";
-import { existsSync } from "node:fs";
+
+const HOME = process.env.HOME ?? "";
+const WORK_DIR = join(HOME, ".lucidlink", "audit-trail");
+const FSMOUNTPOINT = "/Volumes/nab";
+const OS_URL = "http://localhost:9200";
 
 let passed = 0;
 let failed = 0;
@@ -47,9 +49,12 @@ async function testPrerequisites() {
     existsSync(FSMOUNTPOINT + "/.lucid_audit"),
     "Audit log directory exists",
   );
+
+  // Generate stack files from template
+  writeStackFiles(WORK_DIR);
   assert(
-    existsSync(REPO_DIR + "/docker/docker-compose.yml"),
-    "Audit trail repo found",
+    existsSync(join(WORK_DIR, "docker-compose.yml")),
+    "Stack files generated",
   );
 
   const dockerResult = await checkDocker();
@@ -59,7 +64,7 @@ async function testPrerequisites() {
 async function testDockerManager() {
   console.log("\n▶ DockerManager");
 
-  const docker = new DockerManager(REPO_DIR);
+  const docker = new DockerManager(WORK_DIR);
 
   assert(docker.hasComposeFile(), "Compose file detected");
 
@@ -530,7 +535,7 @@ async function testCount() {
 async function testCleanup() {
   console.log("\n▶ Cleanup (stopping stack)");
 
-  const docker = new DockerManager(REPO_DIR);
+  const docker = new DockerManager(WORK_DIR);
   const result = await docker.down(true); // remove volumes to clean up test data
   assert(result.success, "docker compose down -v", result.error);
 }
@@ -541,7 +546,7 @@ async function main() {
   console.log("═══════════════════════════════════════════════════");
   console.log("  Audit Trail MCP Server — Integration Tests");
   console.log("═══════════════════════════════════════════════════");
-  console.log(`  Repo:    ${REPO_DIR}`);
+  console.log(`  Stack:   ${WORK_DIR}`);
   console.log(`  Mount:   ${FSMOUNTPOINT}`);
   console.log(`  OpenSearch: ${OS_URL}`);
 

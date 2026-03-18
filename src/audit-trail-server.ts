@@ -16,14 +16,13 @@ import { registerDocsSearch } from "./docs/docs-search.js";
 import { ok, err } from "./shared/formatters.js";
 import { OpenSearchClient } from "./audit-trail/opensearch-client.js";
 import { DockerManager, checkDocker } from "./audit-trail/docker-manager.js";
+import { writeStackFiles } from "./audit-trail/stack-template.js";
 import { AUDIT_TRAIL_INDEX, VALID_ACTIONS } from "./audit-trail/types.js";
 import type { AuditEvent, SearchHit } from "./audit-trail/types.js";
 import { discoverMounts } from "./audit-trail/mount-discovery.js";
-import type { FilespaceMount } from "./audit-trail/mount-discovery.js";
 
 import { existsSync } from "node:fs";
-import { resolve, join } from "node:path";
-import { spawn } from "node:child_process";
+import { join } from "node:path";
 
 const server = new McpServer(
   { name: "lucidlink-audit-trail", version: "1.0.0" },
@@ -43,35 +42,19 @@ registerDocsSearch(server);
 
 // ── Helpers ──
 
+const HOME = process.env.HOME ?? "";
+const WORK_DIR = join(HOME, ".lucidlink", "audit-trail");
+
 function getClient(): OpenSearchClient {
   return new OpenSearchClient();
 }
 
-function findRepoDir(): string | null {
-  const home = process.env.HOME ?? "";
-  const candidates = [
-    process.env.AUDIT_TRAIL_REPO,
-    // Common project locations
-    join(home, "ll-audit-trail-es"),
-    join(home, "Cursor_projects", "ll-audit-trail-es"),
-    join(home, "Projects", "ll-audit-trail-es"),
-    join(home, "Developer", "ll-audit-trail-es"),
-    join(home, "src", "ll-audit-trail-es"),
-    join(home, "repos", "ll-audit-trail-es"),
-    join(home, "code", "ll-audit-trail-es"),
-    join(home, "Desktop", "ll-audit-trail-es"),
-    // Relative to CWD
-    join(process.cwd(), "ll-audit-trail-es"),
-    join(process.cwd(), "..", "ll-audit-trail-es"),
-  ].filter(Boolean) as string[];
+function getDocker(): DockerManager {
+  return new DockerManager(WORK_DIR);
+}
 
-  for (const dir of candidates) {
-    const resolved = resolve(dir);
-    if (existsSync(join(resolved, "docker", "docker-compose.yml"))) {
-      return resolved;
-    }
-  }
-  return null;
+function hasStack(): boolean {
+  return existsSync(join(WORK_DIR, "docker-compose.yml"));
 }
 
 function formatEvent(hit: SearchHit): string {
@@ -154,7 +137,7 @@ server.tool(
 
 server.tool(
   "setup_audit_trail",
-  "Configure the audit trail analytics stack. Clones the ll-audit-trail-es repo if needed, sets FSMOUNTPOINT in .env, and validates Docker is running. Call this before start_audit_trail. If fsmountpoint is omitted, auto-discovers mounted filespaces via the lucid CLI.",
+  "Generate the audit trail Docker Compose stack files and configure the filespace mount point. Validates Docker is running. Call this before start_audit_trail. If fsmountpoint is omitted, auto-discovers mounted filespaces via the lucid CLI.",
   {
     fsmountpoint: z
       .string()
@@ -162,26 +145,13 @@ server.tool(
       .describe(
         "Absolute path to the mounted LucidLink filespace (e.g., /Volumes/production). If omitted, auto-discovers via lucid CLI.",
       ),
-    repo_url: z
-      .string()
-      .optional()
-      .describe(
-        "Git URL to clone audit trail repo (default: git@bitbucket.org:lucidlink/ll-audit-trail-es.git)",
-      ),
-    clone_dir: z
-      .string()
-      .optional()
-      .describe(
-        "Directory to clone into (default: ~/ll-audit-trail-es)",
-      ),
   },
-  async ({ fsmountpoint: fsMountArg, repo_url, clone_dir }) => {
+  async ({ fsmountpoint: fsMountArg }) => {
     // Auto-discover mount point if not provided
     let fsmountpoint = fsMountArg;
     if (!fsmountpoint) {
       try {
         const mounts = await discoverMounts();
-        // Prefer a mount that has .lucid_audit
         const withAudit = mounts.filter((m) =>
           existsSync(join(m.mountPoint, ".lucid_audit")),
         );
@@ -221,57 +191,14 @@ server.tool(
       );
     }
 
-    // Find or clone repo
-    let repoDir = findRepoDir();
-
-    if (!repoDir) {
-      const targetDir = clone_dir
-        ? resolve(clone_dir)
-        : join(process.env.HOME ?? "", "ll-audit-trail-es");
-      const url =
-        repo_url ?? "git@bitbucket.org:lucidlink/ll-audit-trail-es.git";
-
-      // Clone
-      const result = await new Promise<{ success: boolean; error?: string }>(
-        (res) => {
-          const proc = spawn("git", ["clone", url, targetDir], {
-            stdio: "pipe",
-          });
-          let stderr = "";
-          proc.stderr?.on("data", (d: Buffer) => {
-            stderr += d.toString();
-          });
-          proc.on("close", (code) => {
-            res(
-              code === 0
-                ? { success: true }
-                : { success: false, error: stderr.trim() },
-            );
-          });
-          proc.on("error", (e) => {
-            res({ success: false, error: e.message });
-          });
-        },
-      );
-
-      if (!result.success) {
-        return err(
-          `Failed to clone audit trail repo.\n\n` +
-            `You can clone it manually:\n  git clone ${url} ${targetDir}\n\n` +
-            `Error: ${result.error}`,
-        );
-      }
-
-      repoDir = targetDir;
-    }
-
-    // Configure .env
-    const docker = new DockerManager(repoDir);
+    // Write stack files and configure .env
+    writeStackFiles(WORK_DIR);
+    const docker = getDocker();
     docker.configureEnv(fsmountpoint);
 
     return ok(
       `Audit trail configured.\n\n` +
-        `Repo: ${repoDir}\n` +
+        `Stack: ${WORK_DIR}\n` +
         `Mount point: ${fsmountpoint}\n` +
         `Docker: v${dockerCheck.output}\n\n` +
         `Next: call start_audit_trail to launch the stack.`,
@@ -284,18 +211,13 @@ server.tool(
   "Start the audit trail Docker Compose stack (OpenSearch, Dashboards, Fluent Bit). Waits for services to be healthy. Dashboard available at http://localhost:5601 once ready.",
   {},
   async () => {
-    const repoDir = findRepoDir();
-    if (!repoDir) {
+    if (!hasStack()) {
       return err(
-        "Audit trail repo not found. Call setup_audit_trail first to configure it.",
+        "Audit trail stack not found. Call setup_audit_trail first to generate it.",
       );
     }
 
-    const docker = new DockerManager(repoDir);
-    if (!docker.hasComposeFile()) {
-      return err(`docker-compose.yml not found at ${docker.composeFile}`);
-    }
-
+    const docker = getDocker();
     const result = await docker.up();
     if (!result.success) {
       return err(`Failed to start audit trail stack:\n${result.error}`);
@@ -350,12 +272,11 @@ server.tool(
       ),
   },
   async ({ remove_volumes }) => {
-    const repoDir = findRepoDir();
-    if (!repoDir) {
-      return err("Audit trail repo not found.");
+    if (!hasStack()) {
+      return err("Audit trail stack not found. Call setup_audit_trail first.");
     }
 
-    const docker = new DockerManager(repoDir);
+    const docker = getDocker();
     const result = await docker.down(remove_volumes ?? false);
     if (!result.success) {
       return err(`Failed to stop stack:\n${result.error}`);
@@ -372,19 +293,17 @@ server.tool(
   "Check audit trail stack health — container states, OpenSearch cluster status, document count, and Dashboards reachability.",
   {},
   async () => {
-    const repoDir = findRepoDir();
     const client = getClient();
 
     let output = "Audit trail status:\n\n";
 
     // Check Docker containers
-    if (repoDir) {
-      const docker = new DockerManager(repoDir);
+    if (hasStack()) {
+      const docker = getDocker();
       const ps = await docker.ps();
       if (ps.success && ps.output) {
         output += `Containers:\n`;
         try {
-          // docker compose ps --format json returns one JSON object per line
           const lines = ps.output.trim().split("\n");
           for (const line of lines) {
             const c = JSON.parse(line) as {
@@ -402,7 +321,7 @@ server.tool(
         output += "Containers: not running\n";
       }
     } else {
-      output += "Repo: not found (run setup_audit_trail)\n";
+      output += "Stack: not found (run setup_audit_trail)\n";
     }
 
     // OpenSearch health
