@@ -16,7 +16,7 @@ import { join } from "node:path";
 
 const DOCKER_COMPOSE = `services:
   opensearch-node1:
-    image: opensearchproject/opensearch:2.11.0
+    image: opensearchproject/opensearch:3.5.0
     container_name: opensearch-node1
     environment:
       - cluster.name=\${OPENSEARCH_CLUSTER_NAME:-lucidlink-audit-cluster}
@@ -24,10 +24,8 @@ const DOCKER_COMPOSE = `services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - plugins.security.disabled=\${DISABLE_SECURITY:-true}
-      - plugins.security.ssl.http.enabled=false
       - "OPENSEARCH_JAVA_OPTS=-Xms\${OS_HEAP_SIZE:-1g} -Xmx\${OS_HEAP_SIZE:-1g}"
-      - compatibility.override_main_response_version=true
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=\${OPENSEARCH_ADMIN_PASSWORD:-Admin123!}
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=\${OPENSEARCH_ADMIN_PASSWORD:-LucidL1nk@2026!}
     ulimits:
       memlock:
         soft: -1
@@ -59,7 +57,7 @@ const DOCKER_COMPOSE = `services:
     restart: unless-stopped
 
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.11.0
+    image: opensearchproject/opensearch-dashboards:3.5.0
     container_name: opensearch-dashboards
     volumes:
       - ./config/opensearch-dashboards/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml:ro
@@ -68,7 +66,7 @@ const DOCKER_COMPOSE = `services:
       - OPENSEARCH_HOSTS=["http://opensearch-node1:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=\${DISABLE_SECURITY:-true}
       - OPENSEARCH_USERNAME=\${OPENSEARCH_USERNAME:-admin}
-      - OPENSEARCH_PASSWORD=\${OPENSEARCH_PASSWORD:-Admin123!}
+      - OPENSEARCH_PASSWORD=\${OPENSEARCH_PASSWORD:-LucidL1nk@2026!}
     ports:
       - "\${DASHBOARDS_PORT:-5601}:5601"
     networks:
