@@ -436,13 +436,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         <body>
 
         <h2>Getting Started</h2>
-        <p>LucidLink MCP provides four MCP servers and a bundled LucidLink API for Claude Desktop:</p>
+        <p>LucidLink MCP provides five MCP servers and a bundled LucidLink API for Claude Desktop:</p>
         <div class="card">
             <table>
                 <tr><td>Admin API</td><td>Manage filespaces, members, groups, and permissions (30 tools + API docs search)</td></tr>
                 <tr><td>Connect API</td><td>Manage data stores, entries, and S3 workflows via LucidLink Connect</td></tr>
                 <tr><td>Filespace Search</td><td>Full-text search across indexed filespaces with a generated web UI</td></tr>
                 <tr><td>Filespace Browser</td><td>Generate a web-based filespace browser for navigating mounted filespaces</td></tr>
+                <tr><td>Audit Trail</td><td>File operation analytics &mdash; deploy OpenSearch stack, query events, set up alerts and Slack notifications (15 tools)</td></tr>
             </table>
         </div>
 
@@ -455,7 +456,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         <p>On first launch, the app automatically:</p>
         <ol>
             <li>Starts the bundled LucidLink API on port <code>\(apiPort)</code></li>
-            <li>Configures Claude Desktop with all four MCP server entries</li>
+            <li>Configures Claude Desktop with all five MCP server entries</li>
             <li>Shows a notification to restart Claude Desktop</li>
         </ol>
         <p class="dim">After restarting Claude Desktop, the MCP tools will be available.</p>
@@ -468,6 +469,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 <tr><td>Features</td><td>Full-text search, directory browsing, breadcrumb navigation, direct links to files</td></tr>
                 <tr><td>Direct Links</td><td>Each file and folder has a direct link button that opens the LucidLink web URL</td></tr>
                 <tr><td>Indexer</td><td>fs-index-server runs on port <code>3201</code>, auto-discovers all mounted filespaces</td></tr>
+            </table>
+        </div>
+
+        <h2>Audit Trail Analytics</h2>
+        <p>The Audit Trail MCP server manages a Docker Compose stack (OpenSearch + Dashboards + Fluent Bit) that indexes file operation events from LucidLink filespaces.</p>
+        <div class="card">
+            <table>
+                <tr><td>Setup</td><td>Ask Claude to <em>"set up audit trail for my filespace"</em> &mdash; configures and starts the stack</td></tr>
+                <tr><td>Dashboard</td><td>OpenSearch Dashboards at <code>localhost:5601</code> with pre-built visualizations</td></tr>
+                <tr><td>Queries</td><td>Search events by user, action, path, and time range directly through Claude</td></tr>
+                <tr><td>Alerting</td><td>Create monitors for specific events (e.g., file deletions) with optional Slack notifications</td></tr>
+                <tr><td>Requires</td><td>Docker Desktop running. The filespace must be mounted with <code>.lucid_audit</code> logs enabled.</td></tr>
             </table>
         </div>
 
@@ -486,7 +499,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         </div>
         <div class="menu-item">
             <strong>Configure Claude Desktop</strong>
-            <span class="dim">Writes all four MCP server entries into Claude Desktop's config. Preserves your other MCP servers. Use this after moving the app or updating.</span>
+            <span class="dim">Writes all five MCP server entries into Claude Desktop's config. Preserves your other MCP servers. Use this after moving the app or updating.</span>
         </div>
         <div class="menu-item">
             <strong>Check API Status</strong>
