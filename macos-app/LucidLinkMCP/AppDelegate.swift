@@ -315,7 +315,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 640),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -431,6 +431,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 color: var(--text);
             }
             .trouble-item p { color: var(--dim); font-size: 12px; margin: 0; }
+            .prompt-group { margin: 14px 0 6px; }
+            .prompt-group strong {
+                display: block;
+                font-size: 12px;
+                color: var(--dim);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 6px;
+            }
+            .prompt {
+                display: block;
+                background: var(--card-bg);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 7px 12px;
+                margin: 5px 0;
+                font-size: 12.5px;
+                color: var(--text);
+            }
         </style>
         </head>
         <body>
@@ -482,6 +501,46 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 <tr><td>Alerting</td><td>Create monitors for specific events (e.g., file deletions) with optional Slack notifications</td></tr>
                 <tr><td>Requires</td><td>Docker Desktop running. The filespace must be mounted with <code>.lucid_audit</code> logs enabled.</td></tr>
             </table>
+        </div>
+
+        <h2>Example Prompts</h2>
+        <p>Try these in Claude Desktop to get started:</p>
+
+        <div class="prompt-group">
+            <strong>Admin API</strong>
+            <span class="prompt">&ldquo;List all my filespaces&rdquo;</span>
+            <span class="prompt">&ldquo;Add user alice@company.com to the production filespace&rdquo;</span>
+            <span class="prompt">&ldquo;Create a group called Editors and give them read/write access to /Projects&rdquo;</span>
+            <span class="prompt">&ldquo;How do I rotate API keys?&rdquo;</span>
+            <span class="prompt">&ldquo;What are the best practices for scaling the API?&rdquo;</span>
+        </div>
+
+        <div class="prompt-group">
+            <strong>Connect API</strong>
+            <span class="prompt">&ldquo;Set up an S3 data store for my-bucket in us-east-1&rdquo;</span>
+            <span class="prompt">&ldquo;Import all .mov files from s3://media-bucket/footage/ into /Videos/2026&rdquo;</span>
+            <span class="prompt">&ldquo;Build me a Connect import UI&rdquo;</span>
+        </div>
+
+        <div class="prompt-group">
+            <strong>Filespace Search</strong>
+            <span class="prompt">&ldquo;Search for quarterly report across all filespaces&rdquo;</span>
+            <span class="prompt">&ldquo;Browse the /Projects/design folder&rdquo;</span>
+            <span class="prompt">&ldquo;Build me a search web app&rdquo;</span>
+        </div>
+
+        <div class="prompt-group">
+            <strong>Filespace Browser</strong>
+            <span class="prompt">&ldquo;Create a file browser for my mounted filespaces&rdquo;</span>
+        </div>
+
+        <div class="prompt-group">
+            <strong>Audit Trail</strong>
+            <span class="prompt">&ldquo;Set up audit trail dashboard for /Volumes/production&rdquo;</span>
+            <span class="prompt">&ldquo;Show me all file deletions in the last 24 hours&rdquo;</span>
+            <span class="prompt">&ldquo;What did alice.smith do this week?&rdquo;</span>
+            <span class="prompt">&ldquo;Who has been accessing files in /Confidential?&rdquo;</span>
+            <span class="prompt">&ldquo;Alert me on Slack when someone deletes files in /Production&rdquo;</span>
         </div>
 
         <h2>Menu Bar Icon</h2>
