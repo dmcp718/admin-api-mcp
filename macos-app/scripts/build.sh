@@ -135,11 +135,33 @@ fi
 # Cleanup temp prod modules
 rm -rf "$PROD_MODULES"
 
+# -----------------------------------------------
+# Step 7: Ad-hoc code sign (seals resources)
+# -----------------------------------------------
+# Without this, macOS sees a linker-signed binary with no resource seal,
+# causing "code has no resources but signature indicates they must be present".
+# Proper Developer ID signing (make sign) replaces this ad-hoc signature.
+echo "[7/7] Ad-hoc signing app bundle..."
+
+# Sign embedded binaries first (inside-out)
+codesign --force --deep --sign - "$RESOURCES/node" 2>/dev/null || true
+codesign --force --deep --sign - "$RESOURCES/fs-index-server" 2>/dev/null || true
+find "$RESOURCES/node_modules" -name '*.node' -print0 2>/dev/null | \
+    xargs -0 -I{} codesign --force --sign - "{}" 2>/dev/null || true
+
+# Sign the main binary
+codesign --force --sign - "$CONTENTS/MacOS/LucidLinkMCP"
+
+# Sign the entire app bundle (seals all resources)
+codesign --force --deep --sign - "$APP_DIR"
+
+echo "  Ad-hoc signature applied (resources sealed)."
+
 echo ""
 echo "=== Build Complete ==="
 echo "App bundle: $APP_DIR"
 du -sh "$APP_DIR"
 echo ""
 echo "Next steps:"
-echo "  make sign    — code sign and notarize"
+echo "  make sign    — code sign and notarize (for distribution)"
 echo "  make dmg     — create DMG installer"

@@ -24,7 +24,7 @@ echo "=== Code Signing ==="
 echo "Identity: $IDENTITY"
 echo ""
 
-# Sign inside-out
+# Sign inside-out (every executable must be signed before the bundle)
 
 # 1. Node.js binary
 echo "Signing Resources/node..."
@@ -33,19 +33,27 @@ codesign --force --options runtime \
     --sign "$IDENTITY" \
     "$APP_DIR/Contents/Resources/node"
 
-# 2. Any native node addons (defensive)
+# 2. fs-index-server Go binary
+if [ -f "$APP_DIR/Contents/Resources/fs-index-server" ]; then
+    echo "Signing Resources/fs-index-server..."
+    codesign --force --options runtime \
+        --sign "$IDENTITY" \
+        "$APP_DIR/Contents/Resources/fs-index-server"
+fi
+
+# 3. Any native node addons (defensive)
 find "$APP_DIR/Contents/Resources/node_modules" -name '*.node' -print0 2>/dev/null | \
     xargs -0 -I{} codesign --force --options runtime \
         --entitlements "$ENTITLEMENTS" \
         --sign "$IDENTITY" "{}" || true
 
-# 3. Swift binary
+# 4. Swift binary
 echo "Signing MacOS/LucidLinkMCP..."
 codesign --force --options runtime \
     --sign "$IDENTITY" \
     "$APP_DIR/Contents/MacOS/LucidLinkMCP"
 
-# 4. Entire app bundle
+# 5. Entire app bundle
 echo "Signing app bundle..."
 codesign --force --deep --options runtime \
     --entitlements "$ENTITLEMENTS" \
