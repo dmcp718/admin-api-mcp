@@ -152,7 +152,7 @@ export function registerDocsSearch(server: McpServer): void {
   // Register the search tool
   server.tool(
     "search_api_docs",
-    `Search LucidLink API documentation for answers about authentication, deployment, best practices, scaling, Connect, permissions, endpoints, and more. Uses keyword matching with AND→OR fallback. Returns the most relevant documentation sections.`,
+    `Search LucidLink API documentation for answers about authentication, deployment, best practices, scaling, Connect, permissions, endpoints, audit trail analytics, OpenSearch queries, alerting, and more. Uses keyword matching with AND→OR fallback. Returns the most relevant documentation sections.`,
     {
       query: z
         .string()

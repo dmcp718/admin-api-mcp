@@ -8,7 +8,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 const CAPABILITIES_GUIDE = `LucidLink MCP — Complete Capabilities Guide
 =============================================
 
-You have access to 4 MCP servers that together manage LucidLink filespaces.
+You have access to 5 MCP servers that together manage LucidLink filespaces.
 All servers share a common LucidLink API running at localhost:3003.
 Read this guide before taking action — it will save you from mistakes.
 
@@ -17,10 +17,12 @@ ARCHITECTURE
                                     ┌─ lucidlink-api (30 tools)
   Claude Desktop ──► MCP servers ───┼─ lucidlink-connect-api (18 tools)
                                     ├─ lucidlink-filespace-search (5 tools)
-                                    └─ lucidlink-filespace-browser (1 tool)
+                                    ├─ lucidlink-filespace-browser (1 tool)
+                                    └─ lucidlink-audit-trail (15 tools)
                                           │
                           LucidLink API ◄──┘  (localhost:3003)
                           fs-index-server ◄── (localhost:3201, Go binary)
+                          OpenSearch ◄─────── (localhost:9200, Docker)
 
 IMPORTANT — LucidLink API hosting model:
 The LucidLink API is normally deployed as a self-hosted Docker container (lucidlink/lucidlink-api
@@ -193,6 +195,40 @@ Tools:
                               tree-based file browser, starts it, and opens the browser.
                               Do NOT build file browsers manually — always use this tool.
 
+SERVER 5: lucidlink-audit-trail (file operation analytics)
+============================================================
+Manages the audit trail Docker Compose stack (OpenSearch + Dashboards + Fluent Bit)
+and queries file operation events from LucidLink filespaces.
+
+Stack management:
+  setup_audit_trail           — configure repo, mount point, validate Docker
+  start_audit_trail           — docker compose up, wait for health
+  stop_audit_trail            — docker compose down (optional: remove volumes)
+  audit_trail_status          — container health, cluster status, doc count
+
+OpenSearch queries:
+  search_audit_events         — filtered search (user, action, path, time range)
+  count_audit_events          — aggregation counts by user/action/path/time
+  get_user_activity           — timeline of a specific user's operations
+  get_file_history            — all operations on a file/directory
+  run_opensearch_query        — raw OpenSearch query DSL
+
+Alerting & Slack:
+  create_audit_alert          — create OpenSearch monitor for events
+  list_audit_alerts           — list active monitors
+  delete_audit_alert          — remove a monitor
+  setup_slack_webhook         — register Slack webhook for notifications
+
+Data:
+  load_sample_data            — generate sample events for testing
+  get_audit_trail_schema      — return index field mapping
+
+Example workflow — set up audit trail:
+  1. setup_audit_trail(fsmountpoint: "/Volumes/production")
+  2. start_audit_trail()
+  3. search_audit_events(action: "FileDelete", time_range: "7d")
+  4. create_audit_alert(name: "Deletion Alert", action: "FileDelete", path: "/Projects/")
+
 WHEN TO USE WHICH SERVER
 ========================
 "List my filespaces"              → lucidlink-api: list_filespaces
@@ -208,6 +244,10 @@ WHEN TO USE WHICH SERVER
 "What's the security model?"      → lucidlink-api: search_api_docs
 "How to scale with Docker?"       → lucidlink-api: search_api_docs
 "How do external entries work?"   → lucidlink-api: search_api_docs
+"Set up audit trail dashboard"   → lucidlink-audit-trail: setup_audit_trail + start_audit_trail
+"Show me file deletions"         → lucidlink-audit-trail: search_audit_events
+"Who accessed this file?"        → lucidlink-audit-trail: get_file_history
+"Alert on deletions in /Prod/"   → lucidlink-audit-trail: create_audit_alert
 
 GENERATING UIs
 ==============
