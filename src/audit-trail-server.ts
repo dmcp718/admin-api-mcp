@@ -27,12 +27,24 @@ import { join } from "node:path";
 const server = new McpServer(
   { name: "lucidlink-audit-trail", version: "1.0.0" },
   {
-    instructions: `Audit trail analytics server for LucidLink filespace file operation events.
-Manages the Docker Compose stack (OpenSearch + Dashboards + Fluent Bit) and queries audit data.
-IMPORTANT: Call discover_filespace_mounts FIRST to find mounted filespaces and their mount points.
-Then call setup_audit_trail with the discovered mount point, then start_audit_trail to launch the stack.
-Use search_audit_events, get_user_activity, get_file_history, and count_audit_events to query data.
-Dashboard is available at http://localhost:5601 once started.`,
+    instructions: `Audit trail analytics for LucidLink filespace file operation events.
+Manages a Docker Compose stack: OpenSearch + OpenSearch Dashboards + Fluent Bit.
+
+SETUP WORKFLOW (follow in order):
+  1. discover_filespace_mounts — find mounted filespaces
+  2. setup_audit_trail — generate stack files, configure mount point
+  3. start_audit_trail — docker compose up, wait for health
+
+IMPORTANT: The stack includes a pre-built OpenSearch Dashboards instance with saved visualizations
+(user activity timeline, top users, event type distribution, most active paths).
+Do NOT build or generate a custom dashboard — just direct the user to http://localhost:5601
+once the stack is running. The dashboard is ready to use immediately.
+
+QUERY TOOLS (use after stack is running):
+  search_audit_events — filter by user, action, path, time range
+  get_user_activity — timeline for a specific user
+  get_file_history — all operations on a file/directory
+  count_audit_events — aggregate by user, action, path, or time`,
   },
 );
 
@@ -253,9 +265,11 @@ server.tool(
     return ok(
       `Audit trail stack is running.\n\n` +
         `OpenSearch: http://localhost:9200 (healthy)\n` +
-        `Dashboard:  http://localhost:5601\n` +
+        `Dashboard:  http://localhost:5601 (pre-built, ready to use — do NOT build a custom one)\n` +
         `Documents:  ${docCount.toLocaleString()} audit events indexed\n\n` +
-        `Use search_audit_events, get_user_activity, or get_file_history to query data.`,
+        `Direct the user to open http://localhost:5601 in their browser.\n` +
+        `The dashboard includes: User Activity Timeline, Top Users, Event Type Distribution, Most Active Paths.\n\n` +
+        `Use search_audit_events, get_user_activity, or get_file_history to query data via MCP.`,
     );
   },
 );
