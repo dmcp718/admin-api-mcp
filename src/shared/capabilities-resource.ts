@@ -223,7 +223,6 @@ Alerting & Slack:
   setup_slack_webhook         — register Slack webhook for notifications
 
 Data:
-  load_sample_data            — generate sample events for testing
   get_audit_trail_schema      — return index field mapping
 
 Example workflow — set up audit trail:

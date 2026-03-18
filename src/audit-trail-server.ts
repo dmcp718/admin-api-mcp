@@ -18,7 +18,7 @@ import { OpenSearchClient } from "./audit-trail/opensearch-client.js";
 import { DockerManager, checkDocker } from "./audit-trail/docker-manager.js";
 import { writeStackFiles } from "./audit-trail/stack-template.js";
 import { AUDIT_TRAIL_INDEX, VALID_ACTIONS } from "./audit-trail/types.js";
-import type { AuditEvent, SearchHit } from "./audit-trail/types.js";
+import type { SearchHit } from "./audit-trail/types.js";
 import { discoverMounts } from "./audit-trail/mount-discovery.js";
 
 import { existsSync } from "node:fs";
@@ -41,8 +41,8 @@ Do NOT build or generate a custom dashboard — just direct the user to http://l
 once the stack is running. The dashboard is ready to use immediately.
 
 AFTER START: Fluent Bit automatically ingests real audit logs from the .lucid_audit directory
-on the mounted filespace. Events appear within 30 seconds. Do NOT call load_sample_data when a
-real filespace is mounted — that tool is ONLY for demos with no filespace.
+on the mounted filespace. Events appear within 30 seconds. There is no need to load or generate
+data — real audit events are ingested automatically from the filespace.
 
 QUERY TOOLS (use after stack is running):
   search_audit_events — filter by user, action, path, time range
@@ -932,120 +932,6 @@ server.tool(
 );
 
 // ── Data Tools ──
-
-server.tool(
-  "load_sample_data",
-  "ONLY for testing when NO real filespace is mounted. Do NOT call this if a filespace is mounted — Fluent Bit automatically ingests real audit logs from .lucid_audit. Generates fake sample events for demo purposes.",
-  {
-    count: z
-      .number()
-      .optional()
-      .describe("Number of sample events to generate (default: 500)"),
-    days: z
-      .number()
-      .optional()
-      .describe("Spread events over this many days (default: 7)"),
-  },
-  async ({ count, days }) => {
-    const client = getClient();
-    const numEvents = count ?? 500;
-    const numDays = days ?? 7;
-
-    const users = [
-      "alice.smith",
-      "bob.jones",
-      "carol.chen",
-      "dave.wilson",
-      "eve.davis",
-    ];
-    const actions = [
-      "FileRead",
-      "FileWritten",
-      "FileCreate",
-      "FileDelete",
-      "DirectoryCreate",
-      "Move",
-    ];
-    const basePaths = [
-      "/Projects/design",
-      "/Projects/video",
-      "/Documents/reports",
-      "/Shared/assets",
-      "/Archive/2025",
-    ];
-    const extensions = [
-      ".psd",
-      ".mov",
-      ".pdf",
-      ".jpg",
-      ".png",
-      ".docx",
-      ".mp4",
-      ".aep",
-    ];
-    const devices = [
-      "alice-macbook",
-      "bob-workstation",
-      "carol-laptop",
-      "dave-desktop",
-      "eve-macbook",
-    ];
-
-    const now = Date.now();
-    const msPerDay = 86_400_000;
-    let ndjson = "";
-
-    for (let i = 0; i < numEvents; i++) {
-      const userIdx = i % users.length;
-      const ts = new Date(
-        now - Math.random() * numDays * msPerDay,
-      ).toISOString();
-      const actionType = actions[Math.floor(Math.random() * actions.length)];
-      const basePath =
-        basePaths[Math.floor(Math.random() * basePaths.length)];
-      const ext = extensions[Math.floor(Math.random() * extensions.length)];
-      const filename = `file-${String(i).padStart(4, "0")}${ext}`;
-      const entryPath = `${basePath}/${filename}`;
-
-      const event: AuditEvent = {
-        "@timestamp": ts,
-        user: { name: users[userIdx], id: `${users[userIdx]}@company.com` },
-        device: {
-          hostName: devices[userIdx],
-          osName: "macOS",
-          osVersion: "14.2.0",
-        },
-        event: { filespace: "demo-filespace" },
-        operation: {
-          action: actionType,
-          entryPath,
-          file: filename,
-        },
-      };
-
-      ndjson += JSON.stringify({ index: { _index: AUDIT_TRAIL_INDEX } }) + "\n";
-      ndjson += JSON.stringify(event) + "\n";
-
-      // Bulk in batches of 500
-      if ((i + 1) % 500 === 0 || i === numEvents - 1) {
-        const bulkResp = await client.bulk(ndjson);
-        if (!bulkResp.success) {
-          return err(
-            `Failed to index events at batch ${Math.ceil((i + 1) / 500)}:\n${bulkResp.error}`,
-          );
-        }
-        ndjson = "";
-      }
-    }
-
-    return ok(
-      `Loaded ${numEvents.toLocaleString()} sample audit events spanning ${numDays} days.\n\n` +
-        `Users: ${users.join(", ")}\n` +
-        `Actions: ${actions.join(", ")}\n\n` +
-        `Use search_audit_events or count_audit_events to query the data.`,
-    );
-  },
-);
 
 server.tool(
   "get_audit_trail_schema",
