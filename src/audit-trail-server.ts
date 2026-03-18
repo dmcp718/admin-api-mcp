@@ -40,6 +40,10 @@ IMPORTANT: The stack includes a pre-built OpenSearch Dashboards instance with sa
 Do NOT build or generate a custom dashboard — just direct the user to http://localhost:5601
 once the stack is running. The dashboard is ready to use immediately.
 
+AFTER START: Fluent Bit automatically ingests real audit logs from the .lucid_audit directory
+on the mounted filespace. Events appear within 30 seconds. Do NOT call load_sample_data when a
+real filespace is mounted — that tool is ONLY for demos with no filespace.
+
 QUERY TOOLS (use after stack is running):
   search_audit_events — filter by user, action, path, time range
   get_user_activity — timeline for a specific user
@@ -255,19 +259,27 @@ server.tool(
       );
     }
 
-    // Get doc count
-    const countResp = await client.count(undefined);
-    const docCount =
-      countResp.success && countResp.data
-        ? (countResp.data as { count?: number }).count ?? 0
-        : 0;
+    // Wait for Fluent Bit to ingest real audit logs (up to 30s)
+    let docCount = 0;
+    for (let i = 0; i < 6; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const countResp = await client.count(undefined);
+      if (countResp.success && countResp.data) {
+        docCount = (countResp.data as { count?: number }).count ?? 0;
+        if (docCount > 0) break;
+      }
+    }
 
     return ok(
       `Audit trail stack is running.\n\n` +
         `OpenSearch: http://localhost:9200 (healthy)\n` +
         `Dashboard:  http://localhost:5601 (pre-built, ready to use — do NOT build a custom one)\n` +
-        `Documents:  ${docCount.toLocaleString()} audit events indexed\n\n` +
-        `Direct the user to open http://localhost:5601 in their browser.\n` +
+        `Documents:  ${docCount.toLocaleString()} audit events indexed\n` +
+        (docCount === 0
+          ? `\nFluent Bit is still ingesting logs from the .lucid_audit directory — events will appear shortly.\n` +
+            `Do NOT call load_sample_data. Real audit data is being ingested automatically.\n`
+          : `\nReal audit data ingested from .lucid_audit logs.\n`) +
+        `\nDirect the user to open http://localhost:5601 in their browser.\n` +
         `The dashboard includes: User Activity Timeline, Top Users, Event Type Distribution, Most Active Paths.\n\n` +
         `Use search_audit_events, get_user_activity, or get_file_history to query data via MCP.`,
     );
@@ -923,7 +935,7 @@ server.tool(
 
 server.tool(
   "load_sample_data",
-  "Generate and index sample audit events for testing and demos. Creates realistic file operation events across multiple users and paths.",
+  "ONLY for testing when NO real filespace is mounted. Do NOT call this if a filespace is mounted — Fluent Bit automatically ingests real audit logs from .lucid_audit. Generates fake sample events for demo purposes.",
   {
     count: z
       .number()
