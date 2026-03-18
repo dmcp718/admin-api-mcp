@@ -18,6 +18,8 @@ import { OpenSearchClient } from "./audit-trail/opensearch-client.js";
 import { DockerManager, checkDocker } from "./audit-trail/docker-manager.js";
 import { AUDIT_TRAIL_INDEX, VALID_ACTIONS } from "./audit-trail/types.js";
 import type { AuditEvent, SearchHit } from "./audit-trail/types.js";
+import { discoverMounts } from "./audit-trail/mount-discovery.js";
+import type { FilespaceMount } from "./audit-trail/mount-discovery.js";
 
 import { existsSync } from "node:fs";
 import { resolve, join } from "node:path";
@@ -28,7 +30,8 @@ const server = new McpServer(
   {
     instructions: `Audit trail analytics server for LucidLink filespace file operation events.
 Manages the Docker Compose stack (OpenSearch + Dashboards + Fluent Bit) and queries audit data.
-Call setup_audit_trail first to configure, then start_audit_trail to launch the stack.
+IMPORTANT: Call discover_filespace_mounts FIRST to find mounted filespaces and their mount points.
+Then call setup_audit_trail with the discovered mount point, then start_audit_trail to launch the stack.
 Use search_audit_events, get_user_activity, get_file_history, and count_audit_events to query data.
 Dashboard is available at http://localhost:5601 once started.`,
   },
@@ -79,16 +82,75 @@ function formatSize(bytes: number): string {
   return (bytes / Math.pow(1024, i)).toFixed(1) + " " + units[i];
 }
 
+// ── Mount Discovery ──
+
+server.tool(
+  "discover_filespace_mounts",
+  "Discover mounted LucidLink filespaces using the lucid CLI. Returns instance IDs, filespace names, mount points, and ports. Call this FIRST before setup_audit_trail to find the correct mount point.",
+  {
+    lucid_bin: z
+      .string()
+      .optional()
+      .describe("Path to lucid CLI binary (default: 'lucid')"),
+  },
+  async ({ lucid_bin }) => {
+    try {
+      const mounts = await discoverMounts(lucid_bin ?? "lucid");
+
+      if (mounts.length === 0) {
+        return err(
+          "No LucidLink filespaces found.\n\n" +
+            "Ensure a filespace is connected: lucid connect <filespace>\n" +
+            "Then verify with: lucid list",
+        );
+      }
+
+      let output = `Found ${mounts.length} mounted filespace(s):\n\n`;
+      for (const m of mounts) {
+        const hasAudit = existsSync(join(m.mountPoint, ".lucid_audit"));
+        output += `  ${m.name}\n`;
+        output += `    Mount point:  ${m.mountPoint}\n`;
+        output += `    Instance ID:  ${m.instanceId}\n`;
+        output += `    Port:         ${m.port}\n`;
+        output += `    Audit logs:   ${hasAudit ? "yes (.lucid_audit found)" : "not found"}\n\n`;
+      }
+
+      const withAudit = mounts.filter((m) =>
+        existsSync(join(m.mountPoint, ".lucid_audit")),
+      );
+      if (withAudit.length > 0) {
+        output += `Ready for audit trail setup:\n`;
+        for (const m of withAudit) {
+          output += `  setup_audit_trail(fsmountpoint: "${m.mountPoint}")\n`;
+        }
+      } else {
+        output +=
+          "None of the mounted filespaces have .lucid_audit logs yet.\n" +
+          "Audit logs appear after file operations are performed on the filespace.";
+      }
+
+      return ok(output);
+    } catch (e) {
+      return err(
+        `Failed to discover mounts: ${e instanceof Error ? e.message : String(e)}\n\n` +
+          "Ensure the lucid CLI is installed and in your PATH.\n" +
+          "You can also provide the mount point manually to setup_audit_trail.",
+      );
+    }
+  },
+);
+
 // ── Stack Management Tools ──
 
 server.tool(
   "setup_audit_trail",
-  "Configure the audit trail analytics stack. Clones the ll-audit-trail-es repo if needed, sets FSMOUNTPOINT in .env, and validates Docker is running. Call this before start_audit_trail.",
+  "Configure the audit trail analytics stack. Clones the ll-audit-trail-es repo if needed, sets FSMOUNTPOINT in .env, and validates Docker is running. Call this before start_audit_trail. If fsmountpoint is omitted, auto-discovers mounted filespaces via the lucid CLI.",
   {
     fsmountpoint: z
       .string()
+      .optional()
       .describe(
-        "Absolute path to the mounted LucidLink filespace (e.g., /Volumes/production)",
+        "Absolute path to the mounted LucidLink filespace (e.g., /Volumes/production). If omitted, auto-discovers via lucid CLI.",
       ),
     repo_url: z
       .string()
@@ -103,7 +165,34 @@ server.tool(
         "Directory to clone into (default: ~/ll-audit-trail-es)",
       ),
   },
-  async ({ fsmountpoint, repo_url, clone_dir }) => {
+  async ({ fsmountpoint: fsMountArg, repo_url, clone_dir }) => {
+    // Auto-discover mount point if not provided
+    let fsmountpoint = fsMountArg;
+    if (!fsmountpoint) {
+      try {
+        const mounts = await discoverMounts();
+        // Prefer a mount that has .lucid_audit
+        const withAudit = mounts.filter((m) =>
+          existsSync(join(m.mountPoint, ".lucid_audit")),
+        );
+        const chosen = withAudit[0] ?? mounts[0];
+        if (chosen) {
+          fsmountpoint = chosen.mountPoint;
+        } else {
+          return err(
+            "No mounted LucidLink filespaces found.\n\n" +
+              "Connect a filespace first: lucid connect <filespace>\n" +
+              "Or provide the mount point manually: setup_audit_trail(fsmountpoint: \"/Volumes/myfs\")",
+          );
+        }
+      } catch {
+        return err(
+          "Could not auto-discover filespace mounts (lucid CLI not found?).\n\n" +
+            "Provide the mount point manually: setup_audit_trail(fsmountpoint: \"/Volumes/myfs\")",
+        );
+      }
+    }
+
     // Validate mount point exists
     if (!existsSync(fsmountpoint)) {
       return err(

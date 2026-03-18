@@ -200,8 +200,11 @@ SERVER 5: lucidlink-audit-trail (file operation analytics)
 Manages the audit trail Docker Compose stack (OpenSearch + Dashboards + Fluent Bit)
 and queries file operation events from LucidLink filespaces.
 
+Mount discovery:
+  discover_filespace_mounts   — find mounted filespaces via lucid CLI (call FIRST)
+
 Stack management:
-  setup_audit_trail           — configure repo, mount point, validate Docker
+  setup_audit_trail           — configure repo, mount point, validate Docker (auto-discovers if no mount given)
   start_audit_trail           — docker compose up, wait for health
   stop_audit_trail            — docker compose down (optional: remove volumes)
   audit_trail_status          — container health, cluster status, doc count
@@ -224,10 +227,11 @@ Data:
   get_audit_trail_schema      — return index field mapping
 
 Example workflow — set up audit trail:
-  1. setup_audit_trail(fsmountpoint: "/Volumes/production")
-  2. start_audit_trail()
-  3. search_audit_events(action: "FileDelete", time_range: "7d")
-  4. create_audit_alert(name: "Deletion Alert", action: "FileDelete", path: "/Projects/")
+  1. discover_filespace_mounts() → find mount points
+  2. setup_audit_trail(fsmountpoint: "/Volumes/production") (or omit — auto-discovers)
+  3. start_audit_trail()
+  4. search_audit_events(action: "FileDelete", time_range: "7d")
+  5. create_audit_alert(name: "Deletion Alert", action: "FileDelete", path: "/Projects/")
 
 WHEN TO USE WHICH SERVER
 ========================
