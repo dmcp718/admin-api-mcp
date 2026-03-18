@@ -276,8 +276,7 @@ server.tool(
         `Dashboard:  http://localhost:5601 (pre-built, ready to use — do NOT build a custom one)\n` +
         `Documents:  ${docCount.toLocaleString()} audit events indexed\n` +
         (docCount === 0
-          ? `\nFluent Bit is still ingesting logs from the .lucid_audit directory — events will appear shortly.\n` +
-            `Do NOT call load_sample_data. Real audit data is being ingested automatically.\n`
+          ? `\nFluent Bit is still ingesting logs from the .lucid_audit directory — events will appear shortly.\n`
           : `\nReal audit data ingested from .lucid_audit logs.\n`) +
         `\nDirect the user to open http://localhost:5601 in their browser.\n` +
         `The dashboard includes: User Activity Timeline, Top Users, Event Type Distribution, Most Active Paths.\n\n` +
