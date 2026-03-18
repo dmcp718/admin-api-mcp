@@ -48,9 +48,19 @@ function getClient(): OpenSearchClient {
 }
 
 function findRepoDir(): string | null {
+  const home = process.env.HOME ?? "";
   const candidates = [
     process.env.AUDIT_TRAIL_REPO,
-    join(process.env.HOME ?? "", "ll-audit-trail-es"),
+    // Common project locations
+    join(home, "ll-audit-trail-es"),
+    join(home, "Cursor_projects", "ll-audit-trail-es"),
+    join(home, "Projects", "ll-audit-trail-es"),
+    join(home, "Developer", "ll-audit-trail-es"),
+    join(home, "src", "ll-audit-trail-es"),
+    join(home, "repos", "ll-audit-trail-es"),
+    join(home, "code", "ll-audit-trail-es"),
+    join(home, "Desktop", "ll-audit-trail-es"),
+    // Relative to CWD
     join(process.cwd(), "ll-audit-trail-es"),
     join(process.cwd(), "..", "ll-audit-trail-es"),
   ].filter(Boolean) as string[];
