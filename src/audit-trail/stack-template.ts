@@ -174,14 +174,8 @@ opensearch.hosts: ["http://opensearch-node1:9200"]
 # Security
 opensearch.ssl.verificationMode: none
 
-# Enhanced features for Dashboard Assistant
-# CRITICAL: data_source must be FALSE for single cluster with Assistant
+# Data source must be disabled for single-cluster setup
 data_source.enabled: false
-workspace.enabled: true
-explore.enabled: true
-
-# Dashboard Assistant (required)
-assistant.chat.enabled: true
 
 # UI Settings - Dark theme as default
 uiSettings:
