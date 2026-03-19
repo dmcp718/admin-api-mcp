@@ -6,7 +6,7 @@ Enable Claude Desktop users to say things like "create a filespace browser app" 
 
 ## Key Clarification
 
-All API endpoints live under a single unified LucidLink API at `localhost:3003/api/v1`. The two MCP servers (`admin-server.ts` and `connect-server.ts`) are organizational groupings on the MCP side — they both call the same API.
+All API endpoints live under a single unified LucidLink API at `localhost:3003/api/v1`. The two MCP servers (`lucid-api-server.ts` and `connect-server.ts`) are organizational groupings on the MCP side — they both call the same API.
 
 ## Existing Pattern: `create_connect_ui`
 

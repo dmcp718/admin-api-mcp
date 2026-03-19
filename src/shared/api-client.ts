@@ -147,6 +147,13 @@ export class ApiClient {
     return this.request("DELETE", `/filespaces/${filespaceId}/permissions/${permissionId}`);
   }
 
+  generateDirectLink(filespaceId: string, opts: { entryId?: string; path?: string }) {
+    const params: Record<string, string> = {};
+    if (opts.entryId) params.entryId = opts.entryId;
+    if (opts.path) params.path = opts.path;
+    return this.request("GET", `/filespaces/${filespaceId}/direct-links`, { params });
+  }
+
   getHealth() { return this.request("GET", "/health"); }
   listProviders() { return this.request("GET", "/providers"); }
 

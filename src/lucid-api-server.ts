@@ -599,6 +599,39 @@ server.tool(
   },
 );
 
+// ── Direct Links ──
+
+server.tool(
+  "generate_direct_link",
+  "Generate a shareable direct link to a file or folder in a filespace. Provide exactly one of entry_id or path — not both.",
+  {
+    filespace_id: z.string().describe("ID of the filespace"),
+    entry_id: z.string().optional().describe("Entry ID of the file or folder (alternative to path)"),
+    path: z.string().optional().describe("Absolute path to the file or folder (alternative to entry_id)"),
+  },
+  async ({ filespace_id, entry_id, path }) => {
+    if (entry_id && path) {
+      return err(formatError("Generate Direct Link", "Provide exactly one of entry_id or path, not both."));
+    }
+    if (!entry_id && !path) {
+      return err(formatError("Generate Direct Link", "Provide either entry_id or path."));
+    }
+
+    const startErr = await ensureReady();
+    if (startErr) return err(formatError("Generate Direct Link", startErr));
+
+    const res = await getClient().generateDirectLink(filespace_id, { entryId: entry_id, path });
+    if (!res.success) return err(formatError("Generate Direct Link", res.error ?? "Unknown error"));
+
+    const data = (res.data as Record<string, unknown>)?.data as Record<string, unknown> ?? res.data;
+    const url = data?.url as string | undefined;
+    if (url) {
+      return ok(`Direct link generated:\n\n${url}`);
+    }
+    return ok(formatSuccess("Direct Link", data as Record<string, unknown>));
+  },
+);
+
 // ── Service Management ──
 
 server.tool(
